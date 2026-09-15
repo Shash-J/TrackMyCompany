@@ -8,6 +8,7 @@ interface ProfileModalProps {
   currentProfile: StudentProfile | null;
   onSave: (profile: StudentProfile) => void;
   isFirstTime?: boolean;
+  onImportClick?: () => void;
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -16,6 +17,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   currentProfile,
   onSave,
   isFirstTime = false,
+  onImportClick,
 }) => {
   const [name, setName] = useState('');
   const [branch, setBranch] = useState('');
@@ -148,6 +150,22 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
+
+          {isFirstTime && onImportClick && (
+            <div className="pt-3 border-t border-slate-800 text-center">
+              <p className="text-[11px] text-slate-400 mb-1.5">Using Incognito mode or another computer?</p>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onImportClick();
+                }}
+                className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-4"
+              >
+                Restore everything from your exported Excel (.xlsx) file
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

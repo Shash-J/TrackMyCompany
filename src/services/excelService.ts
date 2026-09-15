@@ -1,34 +1,44 @@
 import * as XLSX from 'xlsx';
-import type { Company, TierCategory, ApplicationStatus, RejectionReasonTag, PriorityLevel, OAShortlistStatus } from '../types';
+import type { Company, TierCategory, ApplicationStatus, RejectionReasonTag, PriorityLevel, OAShortlistStatus, StudentProfile } from '../types';
 
 export interface ImportResult {
   success: boolean;
   importedCount: number;
   errors: string[];
   companies: Company[];
+  profile?: StudentProfile;
 }
 
-export const exportCompaniesToExcel = (companies: Company[], filename: string = 'Campus_Placement_Tracker.xlsx') => {
+export const exportCompaniesToExcel = (
+  companies: Company[], 
+  profile?: StudentProfile | null, 
+  filename: string = 'Campus_Placement_Tracker.xlsx'
+) => {
   const rows = companies.map((c, idx) => ({
     'S.No': idx + 1,
     'Company Name': c.name,
-    'Role / Profile': c.role || 'N/A',
+    'Role / Profile': c.role || 'Software Engineer',
     'Category / Tier': c.tier || 'DREAM',
     'CTC / Package': c.ctc || 'N/A',
     'Application Status': c.status === 'applied' ? 'Applied' : c.status === 'not_applied' ? 'Not Applied' : 'Undecided',
-    'OA Drive Date': c.oaDate ? new Date(c.oaDate).toLocaleDateString() : 'N/A',
-    'OA Shortlist Status': c.oaStatus === 'shortlisted' ? 'Shortlisted' : c.oaStatus === 'not_shortlisted' ? 'Not Shortlisted' : c.oaStatus === 'pending' ? 'Pending' : 'N/A',
+    'OA Drive Date': c.oaDate ? c.oaDate : '',
+    'OA Shortlist Status': c.oaStatus === 'shortlisted' ? 'Shortlisted' : c.oaStatus === 'not_shortlisted' ? 'Not Shortlisted' : c.oaStatus === 'pending' ? 'Pending' : '',
     'Priority': c.priority || 'Medium',
-    'Rejection Reason Tag': c.rejectionReasonTag || 'N/A',
+    'Rejection Reason Tag': c.rejectionReasonTag || '',
     'Rejection Custom Note': c.customReasonNote || '',
     'Google Form Link': c.formLink || '',
     'Application Deadline': c.applicationDeadline || '',
+    'Form Submitted': c.formSubmitted ? 'Yes' : 'No',
+    'Form Submitted Date': c.formSubmittedDate || '',
     'Notes': c.notes || '',
+    'Company ID': c.id,
+    'Created At': c.createdAt,
+    'Updated At': c.updatedAt,
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(rows);
 
-  // Set column widths for readability
+  // Set column widths for clean readability
   worksheet['!cols'] = [
     { wch: 6 },  // S.No
     { wch: 24 }, // Company Name
@@ -43,11 +53,35 @@ export const exportCompaniesToExcel = (companies: Company[], filename: string = 
     { wch: 30 }, // Rejection Custom Note
     { wch: 35 }, // Form Link
     { wch: 18 }, // Deadline
+    { wch: 14 }, // Form Submitted
+    { wch: 22 }, // Form Submitted Date
     { wch: 30 }, // Notes
+    { wch: 28 }, // Company ID
+    { wch: 24 }, // Created At
+    { wch: 24 }, // Updated At
   ];
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Placement Companies');
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Placement_Companies');
+
+  // Sheet 2: Student Profile for seamless transfer & incognito restore
+  if (profile) {
+    const profileRows = [
+      { Property: 'Student Name', Value: profile.name || 'Student' },
+      { Property: 'Branch / Department', Value: profile.branch || '' },
+      { Property: 'Batch / Graduation Year', Value: profile.batch || '2026' },
+      { Property: 'College / Institute', Value: profile.college || '' },
+      { Property: 'Exported At', Value: new Date().toISOString() },
+      { Property: 'Source Application', Value: 'TrackMyCompany (Open Source)' },
+    ];
+    const profileWorksheet = XLSX.utils.json_to_sheet(profileRows);
+    profileWorksheet['!cols'] = [
+      { wch: 28 },
+      { wch: 40 },
+    ];
+    XLSX.utils.book_append_sheet(workbook, profileWorksheet, 'Student_Profile');
+  }
+
   XLSX.writeFile(workbook, filename);
 };
 
@@ -131,12 +165,78 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
         }
 
         const workbook = XLSX.read(buffer, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
+
+        // 1. Check for Student Profile sheet
+        let importedProfile: StudentProfile | undefined;
+        const profileSheetName = workbook.SheetNames.find(
+          (name) => name.toLowerCase().includes('profile') || name.toLowerCase().includes('student')
+        );
+
+        if (profileSheetName && workbook.Sheets[profileSheetName]) {
+          const pWorksheet = workbook.Sheets[profileSheetName];
+          const pJsonData = XLSX.utils.sheet_to_json<Record<string, any>>(pWorksheet, { defval: '' });
+
+          let pName = '';
+          let pBranch = '';
+          let pBatch = '2026';
+          let pCollege = '';
+
+          pJsonData.forEach((row) => {
+            const propKey = String(row['Property'] || row['property'] || row['Key'] || row['key'] || '').toLowerCase();
+            const val = String(row['Value'] || row['value'] || '').trim();
+
+            if (propKey.includes('name')) pName = val;
+            else if (propKey.includes('branch') || propKey.includes('department')) pBranch = val;
+            else if (propKey.includes('batch') || propKey.includes('year')) pBatch = val;
+            else if (propKey.includes('college') || propKey.includes('institute')) pCollege = val;
+
+            // Also support direct column headers
+            if (row['Student Name'] || row['name']) pName = String(row['Student Name'] || row['name']).trim();
+            if (row['Branch'] || row['branch']) pBranch = String(row['Branch'] || row['branch']).trim();
+            if (row['Batch'] || row['batch']) pBatch = String(row['Batch'] || row['batch']).trim();
+            if (row['College'] || row['college']) pCollege = String(row['College'] || row['college']).trim();
+          });
+
+          if (pName) {
+            importedProfile = {
+              name: pName,
+              branch: pBranch || undefined,
+              batch: pBatch || '2026',
+              college: pCollege || undefined,
+            };
+          }
+        }
+
+        // 2. Identify the companies sheet (not the profile sheet)
+        let companiesSheetName = workbook.SheetNames.find(
+          (name) => name.toLowerCase().includes('comp') || name.toLowerCase().includes('placement') || name.toLowerCase().includes('sheet1')
+        );
+
+        if (!companiesSheetName) {
+          companiesSheetName = workbook.SheetNames.find((name) => name !== profileSheetName) || workbook.SheetNames[0];
+        }
+
+        const worksheet = workbook.Sheets[companiesSheetName];
+        if (!worksheet) {
+          return resolve({
+            success: !!importedProfile,
+            importedCount: 0,
+            errors: importedProfile ? [] : ['No company data found in spreadsheet'],
+            companies: [],
+            profile: importedProfile,
+          });
+        }
+
         const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { defval: '' });
 
         if (!jsonData || jsonData.length === 0) {
-          return resolve({ success: false, importedCount: 0, errors: ['Spreadsheet is empty'], companies: [] });
+          return resolve({
+            success: !!importedProfile,
+            importedCount: 0,
+            errors: importedProfile ? [] : ['Spreadsheet company sheet is empty'],
+            companies: [],
+            profile: importedProfile,
+          });
         }
 
         const importedCompanies: Company[] = [];
@@ -251,9 +351,19 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
 
           const formLink = String(normalized['googleformlink'] || normalized['formlink'] || normalized['link'] || '');
           const notes = String(normalized['notes'] || normalized['note'] || '');
+          const existingId = normalized['companyid'] || normalized['id'];
+          const createdAt = normalized['createdat'] || now;
+          const updatedAt = normalized['updatedat'] || now;
+
+          const formSubmitted = 
+            status === 'applied' || 
+            String(normalized['formsubmitted']).toLowerCase() === 'yes' || 
+            String(normalized['formsubmitted']).toLowerCase() === 'true';
+
+          const formSubmittedDate = normalized['formsubmitteddate'] || (formSubmitted ? createdAt : undefined);
 
           importedCompanies.push({
-            id: `cmp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: existingId ? String(existingId) : `cmp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             name: companyName.trim(),
             role: String(role).trim(),
             tier,
@@ -261,15 +371,15 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
             status,
             rejectionReasonTag,
             customReasonNote: customReasonNote.trim() || undefined,
-            formSubmitted: status === 'applied',
-            formSubmittedDate: status === 'applied' ? now : undefined,
+            formSubmitted,
+            formSubmittedDate,
             priority,
             oaDate: oaDate || undefined,
             oaStatus: status === 'applied' ? oaStatus : undefined,
             formLink: formLink.trim() || undefined,
             notes: notes.trim() || undefined,
-            createdAt: now,
-            updatedAt: now,
+            createdAt,
+            updatedAt,
           });
         });
 
@@ -278,6 +388,7 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
           importedCount: importedCompanies.length,
           errors,
           companies: importedCompanies,
+          profile: importedProfile,
         });
       } catch (err: any) {
         return resolve({

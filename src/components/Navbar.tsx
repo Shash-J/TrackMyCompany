@@ -47,9 +47,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
                   TrackMyCompany
                 </span>
-                <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                  Campus 2026
-                </span>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">Campus Placement Tracker for Students</p>
             </div>

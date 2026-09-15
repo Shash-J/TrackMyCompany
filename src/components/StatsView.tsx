@@ -1,19 +1,17 @@
 import React from 'react';
 import { 
-  TrendingUp, 
-  XCircle, 
-  Award, 
-  Send, 
-  PieChart, 
-  Layers, 
   CheckCircle2,
+  XCircle,
   Clock,
   ExternalLink,
   Calendar,
   History,
-  Tag
+  Tag,
+  PieChart as PieChartIcon
 } from 'lucide-react';
 import type { StatisticsData, Company } from '../types';
+import { PieChart } from './PieChart';
+import type { PieChartItem } from './PieChart';
 
 interface StatsViewProps {
   stats: StatisticsData;
@@ -21,262 +19,214 @@ interface StatsViewProps {
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
-  // Chronological order: order they were added (oldest first or newest first with arrival number)
-  // Let's sort oldest first to reflect arrival order 1, 2, 3...
+  // Chronological order: order they were added (oldest first with arrival number 1, 2, 3...)
   const chronologicalCompanies = [...companies].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+
+  // 1. Status Distribution Data
+  const statusChartItems: PieChartItem[] = [
+    {
+      label: 'Applied',
+      value: stats.totalApplied,
+      color: '#10B981', // Emerald
+    },
+    {
+      label: 'Skipped / Not Applied',
+      value: stats.totalNotApplied,
+      color: '#F43F5E', // Rose
+    },
+    {
+      label: 'Undecided',
+      value: stats.totalUndecided,
+      color: '#64748B', // Slate
+    },
+  ];
+
+  // 2. Tier Distribution Data
+  const tierChartItems: PieChartItem[] = [
+    {
+      label: 'Open Dream (≥ 12 LPA)',
+      value: stats.openDreamCount,
+      color: '#A855F7', // Purple
+    },
+    {
+      label: 'Dream (< 12 LPA)',
+      value: stats.dreamCount,
+      color: '#10B981', // Emerald
+    },
+    {
+      label: 'Mass / Regular',
+      value: stats.massCount,
+      color: '#3B82F6', // Blue
+    },
+    {
+      label: 'Internships & Off-Campus',
+      value: stats.internCount + stats.offCampusCount,
+      color: '#F59E0B', // Amber
+    },
+  ];
+
+  // 3. Rejection Reasons Data
+  const reasonColors: Record<string, string> = {
+    'Low CTC': '#F43F5E',
+    'Strict Bond / Service Agreement': '#F59E0B',
+    'Location Not Preferred': '#06B6D4',
+    'CGPA / Branch Ineligible': '#F97316',
+    'Not Interested in Role': '#8B5CF6',
+    'Focusing on Other Companies': '#EC4899',
+    'Other': '#64748B',
+  };
+
+  const rejectionChartItems: PieChartItem[] = stats.rejectionReasons.map((item) => ({
+    label: item.tag,
+    value: item.count,
+    color: reasonColors[item.tag] || '#6366F1',
+  }));
+
+  // 4. OA Conversion Breakdown Data (Applied companies)
+  const oaChartItems: PieChartItem[] = [
+    {
+      label: 'Shortlisted',
+      value: stats.oaShortlistedCount,
+      color: '#10B981', // Emerald
+    },
+    {
+      label: 'Under Review / Pending',
+      value: stats.oaPendingCount,
+      color: '#F59E0B', // Amber
+    },
+    {
+      label: 'Not Shortlisted',
+      value: stats.oaNotShortlistedCount,
+      color: '#EF4444', // Red
+    },
+  ];
+
+  // Collect all custom notes from skipped companies
+  const allCustomNotes = stats.rejectionReasons.flatMap((r) => 
+    r.customNotes.map((note) => ({ tag: r.tag, note }))
   );
 
   return (
     <div className="space-y-8 animate-fadeIn pb-8">
       
-      {/* Top Banner with Core Metrics */}
+      {/* Top Banner with Core Placement Metrics */}
       <div className="bg-[#131B2E] border border-slate-800 p-6 rounded-2xl shadow-lg shadow-black/20">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs uppercase font-bold tracking-wider text-indigo-400">Campus Analytics & Records</span>
+              <span className="text-[11px] uppercase font-bold tracking-wider text-indigo-400">
+                Campus Analytics & Records
+              </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              Placement Statistics & History
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-indigo-400" />
+              <span>Placement Statistics & Charts</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-              Comprehensive conversion funnel, rejection reasons distribution, and arrival records.
+            <p className="text-xs text-slate-400 mt-0.5">
+              Round visual breakdown of applications, tiers, rejection patterns, and chronological records.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="px-4 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-center">
-              <span className="block text-2xl font-extrabold text-indigo-300 font-mono">{stats.totalVisited}</span>
-              <span className="text-[10px] uppercase font-semibold text-slate-400">Total Visited</span>
+            <div className="px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-center">
+              <span className="block text-xl font-extrabold text-indigo-300 font-mono">{stats.totalVisited}</span>
+              <span className="text-[10px] uppercase font-semibold text-slate-400">Visited</span>
             </div>
-            <div className="px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-              <span className="block text-2xl font-extrabold text-emerald-300 font-mono">{stats.appliedPercentage}%</span>
-              <span className="text-[10px] uppercase font-semibold text-slate-400">Applied Rate</span>
+            <div className="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+              <span className="block text-xl font-extrabold text-emerald-300 font-mono">{stats.appliedPercentage}%</span>
+              <span className="text-[10px] uppercase font-semibold text-slate-400">Applied</span>
             </div>
-            <div className="px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
-              <span className="block text-2xl font-extrabold text-amber-300 font-mono">{stats.oaShortlistConversionRate}%</span>
-              <span className="text-[10px] uppercase font-semibold text-slate-400">OA Shortlist Rate</span>
+            <div className="px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+              <span className="block text-xl font-extrabold text-amber-300 font-mono">{stats.oaShortlistConversionRate}%</span>
+              <span className="text-[10px] uppercase font-semibold text-slate-400">Shortlisted</span>
             </div>
           </div>
         </div>
 
-        {/* 4 Overview Mini-Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-slate-800/80">
+        {/* 4 Mini Summary Metric Chips */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-slate-800/80">
           <div className="p-3 bg-[#0B0F19] rounded-xl border border-slate-800">
-            <span className="text-[10px] text-slate-400 uppercase font-semibold block">Companies Arrived</span>
-            <span className="text-lg font-bold text-white font-mono">{stats.totalVisited}</span>
+            <span className="text-[10px] text-slate-400 uppercase font-semibold block">Total Drives</span>
+            <span className="text-base font-bold text-white font-mono">{stats.totalVisited}</span>
           </div>
           <div className="p-3 bg-[#0B0F19] rounded-xl border border-slate-800">
             <span className="text-[10px] text-emerald-400 uppercase font-semibold block">Forms Submitted</span>
-            <span className="text-lg font-bold text-emerald-300 font-mono">{stats.totalApplied} ({stats.appliedPercentage}%)</span>
+            <span className="text-base font-bold text-emerald-300 font-mono">{stats.totalApplied} ({stats.appliedPercentage}%)</span>
           </div>
           <div className="p-3 bg-[#0B0F19] rounded-xl border border-slate-800">
-            <span className="text-[10px] text-rose-400 uppercase font-semibold block">Skipped / Rejected</span>
-            <span className="text-lg font-bold text-rose-300 font-mono">{stats.totalNotApplied} ({stats.notAppliedPercentage}%)</span>
+            <span className="text-[10px] text-rose-400 uppercase font-semibold block">Skipped / Passed</span>
+            <span className="text-base font-bold text-rose-300 font-mono">{stats.totalNotApplied} ({stats.notAppliedPercentage}%)</span>
           </div>
           <div className="p-3 bg-[#0B0F19] rounded-xl border border-slate-800">
-            <span className="text-[10px] text-amber-400 uppercase font-semibold block">OA Shortlisted</span>
-            <span className="text-lg font-bold text-amber-300 font-mono">{stats.oaShortlistedCount}</span>
+            <span className="text-[10px] text-amber-400 uppercase font-semibold block">Shortlisted for OA</span>
+            <span className="text-base font-bold text-amber-300 font-mono">{stats.oaShortlistedCount}</span>
           </div>
         </div>
       </div>
 
-      {/* Grid: Conversion Funnel & Tier Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ROUND PIE CHARTS GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* Placement Conversion Funnel */}
-        <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-6 shadow-lg shadow-black/20">
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-white">Application to OA Funnel</h3>
-              <p className="text-xs text-slate-400">Campus drives conversion pipeline</p>
-            </div>
-          </div>
+        {/* PIE 1: APPLICATION STATUS BREAKDOWN */}
+        <PieChart
+          title="Application Status Breakdown"
+          items={statusChartItems}
+          centerLabel={`${stats.totalVisited}`}
+          centerSublabel="Total Cos."
+          emptyMessage="No companies added yet"
+        />
 
-          <div className="space-y-4 pt-2">
-            {/* Step 1 */}
-            <div>
-              <div className="flex justify-between text-xs font-semibold mb-1">
-                <span className="text-slate-300 flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-indigo-400" />
-                  1. Total Companies Visited
-                </span>
-                <span className="text-white font-bold">{stats.totalVisited} (100%)</span>
-              </div>
-              <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                <div className="h-full bg-indigo-600 rounded-full" style={{ width: '100%' }} />
-              </div>
-            </div>
+        {/* PIE 2: PLACEMENT TIER BREAKDOWN */}
+        <PieChart
+          title="Placement Compensation Tiers"
+          items={tierChartItems}
+          centerLabel={`${stats.totalVisited}`}
+          centerSublabel="Tiers"
+          emptyMessage="No compensation tiers recorded yet"
+        />
 
-            {/* Step 2 */}
-            <div>
-              <div className="flex justify-between text-xs font-semibold mb-1">
-                <span className="text-slate-300 flex items-center gap-1.5">
-                  <Send className="w-3.5 h-3.5 text-emerald-400" />
-                  2. Forms Submitted (Applied)
-                </span>
-                <span className="text-emerald-300 font-bold">
-                  {stats.totalApplied} ({stats.appliedPercentage}%)
-                </span>
-              </div>
-              <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                <div 
-                  className="h-full bg-emerald-500 rounded-full" 
-                  style={{ width: `${stats.appliedPercentage}%` }} 
-                />
-              </div>
-            </div>
+        {/* PIE 3: MAJOR REASONS FOR SKIPPING COMPANIES */}
+        <div className="space-y-3">
+          <PieChart
+            title="Major Reasons for Skipping / Not Applying"
+            items={rejectionChartItems}
+            centerLabel={`${stats.totalNotApplied}`}
+            centerSublabel="Skipped"
+            emptyMessage="No companies skipped yet"
+          />
 
-            {/* Step 3 */}
-            <div>
-              <div className="flex justify-between text-xs font-semibold mb-1">
-                <span className="text-slate-300 flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-amber-400" />
-                  3. Shortlisted to Write OA
-                </span>
-                <span className="text-amber-300 font-bold">
-                  {stats.oaShortlistedCount} ({stats.oaShortlistConversionRate}% of applied)
-                </span>
-              </div>
-              <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                <div 
-                  className="h-full bg-amber-500 rounded-full" 
-                  style={{ width: `${stats.totalVisited > 0 ? Math.round((stats.oaShortlistedCount / stats.totalVisited) * 100) : 0}%` }} 
-                />
+          {/* Student's Custom Rejection Notes */}
+          {allCustomNotes.length > 0 && (
+            <div className="p-4 bg-[#131B2E] border border-slate-800 rounded-xl">
+              <span className="text-xs font-semibold text-slate-300 block mb-2">
+                Your Specific Reason Notes:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {allCustomNotes.map((item, idx) => (
+                  <span 
+                    key={idx}
+                    className="text-[11px] text-slate-300 bg-[#0B0F19] px-2.5 py-1 rounded-lg border border-slate-800 flex items-center gap-1.5"
+                  >
+                    <span className="text-rose-400 font-medium">[{item.tag}]</span>
+                    <span className="italic">"{item.note}"</span>
+                  </span>
+                ))}
               </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Tier Distribution */}
-        <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-6 shadow-lg shadow-black/20">
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-              <PieChart className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-white">Tier Breakdown</h3>
-              <p className="text-xs text-slate-400">Companies by compensation tier</p>
-            </div>
-          </div>
+        {/* PIE 4: OA SHORTLIST & EVALUATION FUNNEL */}
+        <PieChart
+          title="OA Shortlist Status (Applied Drives)"
+          items={oaChartItems}
+          centerLabel={`${stats.totalApplied}`}
+          centerSublabel="Applied"
+          emptyMessage="No applied companies yet"
+        />
 
-          <div className="space-y-3 pt-2">
-            <div className="p-2.5 rounded-xl bg-[#0B0F19] border border-purple-900/30 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                <span className="text-xs font-semibold text-white">Open Dream (≥ 12 LPA)</span>
-              </div>
-              <span className="text-xs font-bold text-purple-300 font-mono">{stats.openDreamCount} companies</span>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-[#0B0F19] border border-emerald-900/30 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span className="text-xs font-semibold text-white">Dream (&lt; 12 LPA)</span>
-              </div>
-              <span className="text-xs font-bold text-emerald-300 font-mono">{stats.dreamCount} companies</span>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-[#0B0F19] border border-blue-900/30 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                <span className="text-xs font-semibold text-white">Mass / Regular</span>
-              </div>
-              <span className="text-xs font-bold text-blue-300 font-mono">{stats.massCount} companies</span>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-[#0B0F19] border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                <span className="text-xs font-semibold text-white">Internships & Off-Campus</span>
-              </div>
-              <span className="text-xs font-bold text-amber-300 font-mono">{stats.internCount + stats.offCampusCount} companies</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* MAJOR REASONS FOR REJECTING / SKIPPING COMPANIES */}
-      <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-6 shadow-lg shadow-black/20">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
-              <XCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-white">
-                Major Reasons for Skipping / Not Applying
-              </h3>
-              <p className="text-xs text-slate-400">
-                Aggregated distribution of rejection reason tags and custom notes
-              </p>
-            </div>
-          </div>
-
-          <div className="text-xs font-semibold px-3 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 self-start sm:self-auto">
-            {stats.totalNotApplied} Companies Skipped ({stats.notAppliedPercentage}%)
-          </div>
-        </div>
-
-        {stats.rejectionReasons.length === 0 ? (
-          <div className="py-10 text-center text-slate-400">
-            <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-400/60 mb-2" />
-            <p className="text-sm font-semibold text-white">No companies skipped yet</p>
-            <p className="text-xs mt-0.5">
-              When you choose not to apply to a company and tag reasons (like Low CTC or Bond), the breakdown will appear here.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4 pt-5">
-            {stats.rejectionReasons.map((item, idx) => (
-              <div key={item.tag} className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center font-mono text-[10px] text-slate-400 font-bold">
-                      {idx + 1}
-                    </span>
-                    <span className="font-bold text-white text-sm">
-                      {item.tag}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-rose-300">
-                      {item.count} {item.count === 1 ? 'company' : 'companies'}
-                    </span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-950/60 text-rose-300 border border-rose-800/60 font-semibold font-mono">
-                      {item.percentage}%
-                    </span>
-                  </div>
-                </div>
-
-                <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                  <div 
-                    className="h-full bg-gradient-to-r from-rose-500 to-amber-500 rounded-full transition-all duration-500"
-                    style={{ width: `${item.percentage}%` }}
-                  />
-                </div>
-
-                {item.customNotes.length > 0 && (
-                  <div className="mt-1 pl-7 flex flex-wrap gap-1.5">
-                    {item.customNotes.map((note, noteIdx) => (
-                      <span 
-                        key={noteIdx}
-                        className="text-[11px] text-slate-300 bg-[#0B0F19] px-2.5 py-1 rounded-lg border border-slate-800 italic"
-                      >
-                        "{note}"
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* NEW SECTION: COMPANIES IN ORDER OF ARRIVAL / ENTRY */}

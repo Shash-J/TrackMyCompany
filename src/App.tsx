@@ -55,6 +55,7 @@ export const App: React.FC = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
+  const [importExportInitialTab, setImportExportInitialTab] = useState<'import' | 'export' | 'backup'>('export');
   const [editCompany, setEditCompany] = useState<Company | null>(null);
   const [defaultStatusForModal, setDefaultStatusForModal] = useState<ApplicationStatus>('applied');
 
@@ -167,7 +168,13 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleImportComplete = (imported: Company[]) => {
+  const handleImportComplete = (imported: Company[], importedProfile?: StudentProfile) => {
+    if (importedProfile && importedProfile.name) {
+      saveProfile(importedProfile);
+      setProfile(importedProfile);
+      setIsProfileModalOpen(false);
+    }
+
     const current = getCompanies();
     const existingNames = new Set(current.map((c) => c.name.trim().toLowerCase()));
     const newItems = imported.filter((c) => !existingNames.has(c.name.trim().toLowerCase()));
@@ -266,7 +273,10 @@ export const App: React.FC = () => {
         profile={profile}
         onOpenProfile={() => setIsProfileModalOpen(true)}
         onOpenAddModal={() => openAddModalWithStatus('applied')}
-        onOpenImportExport={() => setIsImportExportModalOpen(true)}
+        onOpenImportExport={() => {
+          setImportExportInitialTab('export');
+          setIsImportExportModalOpen(true);
+        }}
       />
 
       {/* Main Content Area */}
@@ -277,33 +287,13 @@ export const App: React.FC = () => {
           <div className="space-y-6">
             
             {/* Dashboard Header Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  Placement Hub
-                </h1>
-                <p className="text-xs text-slate-400">
-                  Add and track campus companies from your WhatsApp announcements.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsImportExportModalOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-[#131B2E] hover:bg-slate-800 border border-slate-700/80 text-xs font-medium text-slate-300 transition-colors flex items-center gap-1.5"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Import / Export</span>
-                </button>
-
-                <button
-                  onClick={() => openAddModalWithStatus('applied')}
-                  className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-md shadow-indigo-600/30 transition-all flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Company</span>
-                </button>
-              </div>
+            <div className="pb-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                Placement Hub
+              </h1>
+              <p className="text-xs text-slate-400">
+                Add and track campus companies from your WhatsApp announcements.
+              </p>
             </div>
 
             {/* SECTION: UPCOMING DRIVES OF APPLIED COMPANIES */}
@@ -553,6 +543,10 @@ export const App: React.FC = () => {
         currentProfile={profile}
         onSave={handleSaveProfile}
         isFirstTime={!profile || !profile.name}
+        onImportClick={() => {
+          setImportExportInitialTab('import');
+          setIsImportExportModalOpen(true);
+        }}
       />
 
       <CompanyModal
@@ -564,9 +558,12 @@ export const App: React.FC = () => {
       />
 
       <ImportExportModal
+        key={importExportInitialTab}
         isOpen={isImportExportModalOpen}
         onClose={() => setIsImportExportModalOpen(false)}
         companies={companies}
+        profile={profile}
+        initialTab={importExportInitialTab}
         onImportComplete={handleImportComplete}
       />
 

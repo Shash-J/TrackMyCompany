@@ -10,7 +10,7 @@ import {
   Database,
   ArrowDownToLine
 } from 'lucide-react';
-import type { Company } from '../types';
+import type { Company, StudentProfile } from '../types';
 import { 
   exportCompaniesToExcel, 
   exportCompaniesToCSV, 
@@ -23,16 +23,20 @@ interface ImportExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   companies: Company[];
-  onImportComplete: (importedCompanies: Company[]) => void;
+  profile?: StudentProfile | null;
+  onImportComplete: (importedCompanies: Company[], importedProfile?: StudentProfile) => void;
+  initialTab?: 'import' | 'export' | 'backup';
 }
 
 export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   isOpen,
   onClose,
   companies,
+  profile,
   onImportComplete,
+  initialTab = 'export',
 }) => {
-  const [activeTab, setActiveTab] = useState<'import' | 'export' | 'backup'>('export');
+  const [activeTab, setActiveTab] = useState<'import' | 'export' | 'backup'>(initialTab);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -47,11 +51,11 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
 
     try {
       const result = await parseExcelOrCSVFile(file);
-      if (result.success && result.companies.length > 0) {
-        onImportComplete(result.companies);
+      if (result.success && (result.companies.length > 0 || result.profile)) {
+        onImportComplete(result.companies, result.profile);
         setStatusMessage({
           type: 'success',
-          message: `Successfully imported ${result.importedCount} companies from ${file.name}!`,
+          message: `Successfully imported ${result.importedCount} companies${result.profile ? ` and restored profile for ${result.profile.name}` : ''}!`,
         });
       } else {
         setStatusMessage({
@@ -72,7 +76,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   };
 
   const handleExportExcel = () => {
-    exportCompaniesToExcel(companies);
+    exportCompaniesToExcel(companies, profile);
     setStatusMessage({ type: 'success', message: 'Excel file generated and downloaded.' });
   };
 
