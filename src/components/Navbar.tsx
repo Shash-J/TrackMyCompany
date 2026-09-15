@@ -2,18 +2,15 @@ import React from 'react';
 import { 
   Building2, 
   BarChart3, 
-  Calendar, 
   Plus, 
   FileSpreadsheet, 
   UserCheck, 
-  Sparkles,
-  Layers,
-  XCircle
+  LayoutDashboard
 } from 'lucide-react';
 import type { StudentProfile } from '../types';
 import { GithubIcon } from './GithubIcon';
 
-export type NavTab = 'all' | 'applied' | 'not_applied' | 'upcoming_oa' | 'statistics';
+export type NavTab = 'dashboard' | 'statistics';
 
 interface NavbarProps {
   currentTab: NavTab;
@@ -22,10 +19,6 @@ interface NavbarProps {
   onOpenProfile: () => void;
   onOpenAddModal: () => void;
   onOpenImportExport: () => void;
-  totalCount: number;
-  appliedCount: number;
-  notAppliedCount: number;
-  upcomingOACount: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -35,10 +28,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenProfile,
   onOpenAddModal,
   onOpenImportExport,
-  totalCount,
-  appliedCount,
-  notAppliedCount,
-  upcomingOACount,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full glass-nav border-b border-slate-800/80 bg-[#0B0F19]/90 backdrop-blur-md">
@@ -46,7 +35,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16 gap-4">
           
           {/* Logo & Brand */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => onSelectTab('all')}>
+          <div 
+            className="flex items-center gap-3 cursor-pointer" 
+            onClick={() => onSelectTab('dashboard')}
+          >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 border border-indigo-400/30">
               <Building2 className="w-5 h-5 text-white" />
             </div>
@@ -59,77 +51,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Campus 2026
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Campus Drive Tracker for Students</p>
+              <p className="text-xs text-slate-400 hidden sm:block">Campus Placement Tracker for Students</p>
             </div>
           </div>
 
-          {/* Center Navigation Tabs */}
-          <nav className="hidden md:flex items-center gap-1 bg-[#131B2E] p-1 rounded-xl border border-slate-800">
+          {/* Center: Exactly Two Main Tabs */}
+          <nav className="flex items-center gap-1.5 bg-[#131B2E] p-1.5 rounded-xl border border-slate-800">
             <button
-              onClick={() => onSelectTab('all')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                currentTab === 'all'
+              onClick={() => onSelectTab('dashboard')}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                currentTab === 'dashboard'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
               }`}
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span>All Companies</span>
-              <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-slate-800/80 border border-slate-700/50 text-slate-300">
-                {totalCount}
-              </span>
-            </button>
-
-            <button
-              onClick={() => onSelectTab('applied')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                currentTab === 'applied'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Applied</span>
-              <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-emerald-950/60 border border-emerald-800/40 text-emerald-300">
-                {appliedCount}
-              </span>
-            </button>
-
-            <button
-              onClick={() => onSelectTab('not_applied')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                currentTab === 'not_applied'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <XCircle className="w-3.5 h-3.5 text-rose-400" />
-              <span>Not Applied</span>
-              <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-rose-950/60 border border-rose-800/40 text-rose-300">
-                {notAppliedCount}
-              </span>
-            </button>
-
-            <button
-              onClick={() => onSelectTab('upcoming_oa')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                currentTab === 'upcoming_oa'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5 text-amber-400" />
-              <span>OA Drives</span>
-              {upcomingOACount > 0 && (
-                <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-amber-950/60 border border-amber-800/40 text-amber-300 animate-pulse">
-                  {upcomingOACount}
-                </span>
-              )}
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
             </button>
 
             <button
               onClick={() => onSelectTab('statistics')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
                 currentTab === 'statistics'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -193,41 +135,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
         </div>
-
-        {/* Mobile Navigation Strip */}
-        <div className="flex md:hidden items-center justify-around py-2 border-t border-slate-800/60 overflow-x-auto gap-1 text-xs">
-          <button
-            onClick={() => onSelectTab('all')}
-            className={`px-2.5 py-1 rounded-lg ${currentTab === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-          >
-            All ({totalCount})
-          </button>
-          <button
-            onClick={() => onSelectTab('applied')}
-            className={`px-2.5 py-1 rounded-lg ${currentTab === 'applied' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-          >
-            Applied ({appliedCount})
-          </button>
-          <button
-            onClick={() => onSelectTab('not_applied')}
-            className={`px-2.5 py-1 rounded-lg ${currentTab === 'not_applied' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-          >
-            Skipped ({notAppliedCount})
-          </button>
-          <button
-            onClick={() => onSelectTab('upcoming_oa')}
-            className={`px-2.5 py-1 rounded-lg ${currentTab === 'upcoming_oa' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-          >
-            OAs ({upcomingOACount})
-          </button>
-          <button
-            onClick={() => onSelectTab('statistics')}
-            className={`px-2.5 py-1 rounded-lg ${currentTab === 'statistics' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-          >
-            Stats
-          </button>
-        </div>
-
       </div>
     </header>
   );

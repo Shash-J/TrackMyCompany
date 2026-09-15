@@ -20,7 +20,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [name, setName] = useState('');
   const [branch, setBranch] = useState('');
   const [batch, setBatch] = useState('2026');
-  const [targetCtc, setTargetCtc] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -28,7 +27,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setName(currentProfile.name || '');
       setBranch(currentProfile.branch || '');
       setBatch(currentProfile.batch || '2026');
-      setTargetCtc(currentProfile.targetCtc || '');
     }
   }, [currentProfile, isOpen]);
 
@@ -37,7 +35,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Student Name is required to personalize your campus placement tracker.');
+      setError('Student Name is required to personalize your placement tracker.');
       return;
     }
     setError('');
@@ -45,7 +43,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       name: name.trim(),
       branch: branch.trim() || undefined,
       batch: batch.trim() || '2026',
-      targetCtc: targetCtc.trim() || undefined,
     });
     onClose();
   };
@@ -88,7 +85,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         <div className="my-4 p-3 rounded-xl bg-indigo-950/40 border border-indigo-900/60 flex items-start gap-2.5">
           <ShieldCheck className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
           <p className="text-xs text-indigo-200/90 leading-relaxed">
-            <span className="font-semibold text-white">100% Private & Local:</span> No Google login or passwords required. All your company applications and notes are saved directly in your browser.
+            <span className="font-semibold text-white">100% Private & Local:</span> No login or passwords required. All your applications and notes are saved directly in your browser.
           </p>
         </div>
 
@@ -106,7 +103,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 setName(e.target.value);
                 if (error) setError('');
               }}
-              placeholder="e.g. Shashanka"
+              placeholder="e.g. Rahul / Alex"
               className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
             />
             {error && <p className="text-xs text-rose-400 mt-1 font-medium">{error}</p>}
@@ -140,20 +137,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               />
             </div>
-          </div>
-
-          {/* Target CTC / Dream Goal */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-              Target CTC / Placement Goal <span className="text-slate-500 font-normal">(Optional)</span>
-            </label>
-            <input
-              type="text"
-              value={targetCtc}
-              onChange={(e) => setTargetCtc(e.target.value)}
-              placeholder="e.g. 15+ LPA / Open Dream"
-              className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-            />
           </div>
 
           <div className="pt-2">
