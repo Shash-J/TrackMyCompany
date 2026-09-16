@@ -119,14 +119,21 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
   });
 
   notAppliedList.forEach((company) => {
-    const tag = company.rejectionReasonTag || 'Other';
-    if (!reasonMap[tag]) {
-      reasonMap[tag] = { count: 0, customNotes: [] };
-    }
-    reasonMap[tag].count += 1;
-    if (company.customReasonNote && company.customReasonNote.trim()) {
-      reasonMap[tag].customNotes.push(company.customReasonNote.trim());
-    }
+    const tags = company.rejectionReasonTags?.length 
+      ? company.rejectionReasonTags 
+      : [company.rejectionReasonTag || 'Other'];
+
+    tags.forEach((tag) => {
+      if (!reasonMap[tag]) {
+        reasonMap[tag] = { count: 0, customNotes: [] };
+      }
+      reasonMap[tag].count += 1;
+      if (company.customReasonNote && company.customReasonNote.trim()) {
+        if (!reasonMap[tag].customNotes.includes(company.customReasonNote.trim())) {
+          reasonMap[tag].customNotes.push(company.customReasonNote.trim());
+        }
+      }
+    });
   });
 
   const rejectionReasons = Object.entries(reasonMap)

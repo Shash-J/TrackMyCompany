@@ -32,7 +32,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
   const [oaSelected, setOaSelected] = useState<boolean>(false);
 
   // When Not Applied
-  const [rejectionReasonTag, setRejectionReasonTag] = useState<RejectionReasonTag>('Low CTC');
+  const [rejectionReasonTags, setRejectionReasonTags] = useState<RejectionReasonTag[]>(['Low CTC']);
   const [customReasonNote, setCustomReasonNote] = useState('');
 
   const [error, setError] = useState('');
@@ -50,7 +50,10 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setOaDate(editCompany.oaDate || editCompany.applicationDeadline || '');
       setOaSelected(editCompany.oaStatus === 'shortlisted');
 
-      setRejectionReasonTag(editCompany.rejectionReasonTag || 'Low CTC');
+      const existingTags: RejectionReasonTag[] = editCompany.rejectionReasonTags?.length 
+        ? editCompany.rejectionReasonTags 
+        : (editCompany.rejectionReasonTag ? [editCompany.rejectionReasonTag] : ['Low CTC']);
+      setRejectionReasonTags(existingTags);
       setCustomReasonNote(editCompany.customReasonNote || '');
     } else {
       // Reset form
@@ -63,13 +66,24 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setStatus(defaultStatus === 'not_applied' ? 'not_applied' : 'applied');
       setOaDate('');
       setOaSelected(false);
-      setRejectionReasonTag('Low CTC');
+      setRejectionReasonTags(['Low CTC']);
       setCustomReasonNote('');
     }
     setError('');
   }, [editCompany, isOpen, defaultStatus]);
 
   if (!isOpen) return null;
+
+  const handleToggleTag = (tag: RejectionReasonTag) => {
+    setRejectionReasonTags((prev) => {
+      if (prev.includes(tag)) {
+        const next = prev.filter((t) => t !== tag);
+        return next.length > 0 ? next : [tag];
+      } else {
+        return [...prev, tag];
+      }
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +113,8 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
           ? (editCompany ? (oaSelected ? 'shortlisted' : 'not_shortlisted') : 'not_shortlisted') 
           : undefined,
         // Not applied fields
-        rejectionReasonTag: currentStatus === 'not_applied' ? rejectionReasonTag : undefined,
+        rejectionReasonTags: currentStatus === 'not_applied' ? rejectionReasonTags : undefined,
+        rejectionReasonTag: currentStatus === 'not_applied' ? (rejectionReasonTags[0] || 'Other') : undefined,
         customReasonNote: currentStatus === 'not_applied' && customReasonNote.trim() ? customReasonNote.trim() : undefined,
       },
       editCompany ? editCompany.id : undefined
@@ -295,38 +310,48 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
           {/* DYNAMIC SECTION: IF NOT APPLIED (REJECTION REASONS) */}
           {status === 'not_applied' && (
             <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-800/40 space-y-3 animate-fadeIn">
-              <span className="text-xs font-bold uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
-                <Tag className="w-4 h-4 text-rose-400" />
-                Reason for Not Applying / Rejection Tag
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
+                  <Tag className="w-4 h-4 text-rose-400" />
+                  Reasons for Skipping
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  Select all that apply ({rejectionReasonTags.length} selected)
+                </span>
+              </div>
 
-              {/* Preset Chips */}
+              {/* Multi-Select Preset Chips */}
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {REJECTION_PRESET_TAGS.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => setRejectionReasonTag(tag)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                      rejectionReasonTag === tag
-                        ? 'bg-rose-500/25 border-rose-500/60 text-rose-200 font-bold shadow-sm shadow-rose-500/20'
-                        : 'bg-[#0B0F19] border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
+                {REJECTION_PRESET_TAGS.map((tag) => {
+                  const isSelected = rejectionReasonTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => handleToggleTag(tag)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                        isSelected
+                          ? 'bg-rose-500/25 border-rose-500/60 text-rose-200 font-bold shadow-sm shadow-rose-500/20'
+                          : 'bg-[#0B0F19] border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold">{isSelected ? '✓' : '+'}</span>
+                      <span>{tag}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Custom Reason Note */}
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Custom Reason / Extra Note {rejectionReasonTag === 'Other' && <span className="text-rose-400">*</span>}
+                  Custom Reason / Extra Note {rejectionReasonTags.includes('Other') && <span className="text-rose-400">*</span>}
                 </label>
                 <textarea
                   rows={2}
                   value={customReasonNote}
                   onChange={(e) => setCustomReasonNote(e.target.value)}
+                  placeholder="e.g. 3 years bond is too long, or location not preferred..."
                   className="w-full px-3.5 py-2 bg-[#0B0F19] border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-rose-500"
                 />
               </div>

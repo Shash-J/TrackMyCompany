@@ -17,11 +17,6 @@ interface StatsViewProps {
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
-  // Chronological order: order they were added (oldest first with arrival number 1, 2, 3...)
-  const chronologicalCompanies = [...companies].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
-
   // 1. Status Distribution Data (Applied vs Skipped)
   const statusChartItems: PieChartItem[] = [
     {
@@ -60,23 +55,136 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
     },
   ];
 
-  // 3. Rejection Reasons Data
-  const reasonColors: Record<string, string> = {
-    'Low CTC': '#F43F5E',
-    'Strict Bond / Service Agreement': '#F59E0B',
-    'Location Not Preferred': '#06B6D4',
-    'CGPA / Branch Ineligible': '#F97316',
-    'Not Interested in Role': '#8B5CF6',
-    'Focusing on Other Companies': '#EC4899',
-    'PBC': '#3B82F6',
-    'Other': '#64748B',
-  };
+  // 3. Extracted Keywords & Reason Topics for Skipped Companies
+  const skippedCompanies = companies.filter((c) => c.status === 'not_applied');
+  const totalSkipped = skippedCompanies.length;
 
-  const rejectionChartItems: PieChartItem[] = stats.rejectionReasons.map((item) => ({
-    label: item.tag,
-    value: item.count,
-    color: reasonColors[item.tag] || '#6366F1',
-  }));
+  const KEYWORD_TOPICS = [
+    {
+      id: 'ctc',
+      label: 'CTC / Package',
+      color: '#F43F5E',
+      keywords: ['ctc', 'pay', 'salary', 'package', 'stipend', 'lpa', 'compensation', 'money'],
+      tags: ['Low CTC'],
+    },
+    {
+      id: 'pbc',
+      label: 'PBC / Product Focus',
+      color: '#3B82F6',
+      keywords: ['pbc', 'product', 'faang', 'startup', 'product-based'],
+      tags: ['PBC'],
+    },
+    {
+      id: 'bond',
+      label: 'Service Agreement / Bond',
+      color: '#F59E0B',
+      keywords: ['bond', 'agreement', 'service', 'lock-in', 'penalty'],
+      tags: ['Strict Bond / Service Agreement'],
+    },
+    {
+      id: 'location',
+      label: 'Location / Relocation',
+      color: '#06B6D4',
+      keywords: ['location', 'relocation', 'bangalore', 'hyderabad', 'pune', 'remote', 'city'],
+      tags: ['Location Not Preferred'],
+    },
+    {
+      id: 'role',
+      label: 'Role / Tech Mismatch',
+      color: '#8B5CF6',
+      keywords: ['role', 'tech', 'stack', 'developer', 'qa', 'support', 'profile'],
+      tags: ['Not Interested in Role'],
+    },
+    {
+      id: 'criteria',
+      label: 'CGPA / Branch Eligibility',
+      color: '#F97316',
+      keywords: ['cgpa', 'branch', 'criteria', 'eligibility', 'cutoff', 'percentage', 'ineligible'],
+      tags: ['CGPA / Branch Ineligible'],
+    },
+    {
+      id: 'focus',
+      label: 'Other Opportunities',
+      color: '#EC4899',
+      keywords: ['focus', 'other companies', 'gate', 'cat', 'higher studies', 'off-campus'],
+      tags: ['Focusing on Other Companies'],
+    },
+    {
+      id: 'other',
+      label: 'Other Reasons',
+      color: '#64748B',
+      keywords: ['other', 'personal', 'prep', 'preparation'],
+      tags: ['Other'],
+    },
+  ];
+
+  // Extract topic frequencies across skipped companies
+  const topicCounts: Record<string, number> = {};
+  KEYWORD_TOPICS.forEach((t) => {
+    topicCounts[t.id] = 0;
+  });
+
+  skippedCompanies.forEach((company) => {
+    const tags = company.rejectionReasonTags?.length
+      ? company.rejectionReasonTags
+      : company.rejectionReasonTag
+      ? [company.rejectionReasonTag]
+      : [];
+    const noteText = `${company.customReasonNote || ''} ${company.notes || ''}`.toLowerCase();
+
+    let matchedAny = false;
+    KEYWORD_TOPICS.forEach((topic) => {
+      const tagMatch = tags.some((tag) => topic.tags.includes(tag));
+      const keywordMatch = topic.keywords.some((kw) => noteText.includes(kw));
+      if (tagMatch || keywordMatch) {
+        topicCounts[topic.id] = (topicCounts[topic.id] || 0) + 1;
+        matchedAny = true;
+      }
+    });
+
+    if (!matchedAny) {
+      topicCounts['other'] = (topicCounts['other'] || 0) + 1;
+    }
+  });
+
+  const keywordPieItems: PieChartItem[] = KEYWORD_TOPICS
+    .filter((t) => topicCounts[t.id] > 0)
+    .map((t) => ({
+      label: t.label,
+      value: topicCounts[t.id],
+      color: t.color,
+    }));
+
+  // Line-by-line topic breakdown showing percentage
+  const topicStats = KEYWORD_TOPICS
+    .filter((t) => topicCounts[t.id] > 0)
+    .map((t) => {
+      const count = topicCounts[t.id];
+      const pct = totalSkipped > 0 ? ((count / totalSkipped) * 100).toFixed(0) : '0';
+      return {
+        ...t,
+        count,
+        percentage: pct,
+      };
+    })
+    .sort((a, b) => b.count - a.count);
+
+  // Line-by-line specific custom reason notes
+  const specificNotes = skippedCompanies
+    .filter((c) => !!c.customReasonNote?.trim())
+    .map((c) => {
+      const tags = c.rejectionReasonTags?.length
+        ? c.rejectionReasonTags
+        : c.rejectionReasonTag
+        ? [c.rejectionReasonTag]
+        : [];
+      return {
+        id: c.id,
+        companyName: c.name,
+        tags,
+        note: c.customReasonNote!.trim(),
+      };
+    });
 
   // 4. OA Selection Breakdown Data (Applied companies: OA Selected vs Not Selected)
   const notSelectedCount = Math.max(0, stats.totalApplied - stats.oaShortlistedCount);
@@ -87,16 +195,11 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
       color: '#10B981', // Emerald
     },
     {
-      label: 'Not Selected',
+      label: 'Awaiting / Not Selected',
       value: notSelectedCount,
-      color: '#EF4444', // Red
+      color: '#F59E0B', // Amber
     },
   ];
-
-  // Collect all custom notes from skipped companies
-  const allCustomNotes = stats.rejectionReasons.flatMap((r) => 
-    r.customNotes.map((note) => ({ tag: r.tag, note }))
-  );
 
   return (
     <div className="space-y-5 animate-fadeIn pb-6">
@@ -110,10 +213,10 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
             </span>
             <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2">
               <PieChartIcon className="w-5 h-5 text-indigo-400" />
-              <span>Placement Statistics</span>
+              <span>Your placement stats</span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Round visual breakdown of applications, tiers, rejection patterns, and records.
+              analyse and improve your chances of getting placed
             </p>
           </div>
 
@@ -155,30 +258,75 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
           emptyMessage="No compensation tiers recorded yet"
         />
 
-        {/* PIE 3: MAJOR REASONS FOR SKIPPING COMPANIES */}
-        <div className="space-y-2.5">
+        {/* PIE 3: EXTRACTED REASONS & KEYWORDS BREAKDOWN */}
+        <div className="space-y-3">
           <PieChart
-            title="Major Reasons for Skipping / Not Applying"
-            items={rejectionChartItems}
+            title="Reasons & Extracted Keywords Breakdown"
+            items={keywordPieItems}
             centerLabel={`${stats.totalNotApplied}`}
             centerSublabel="Skipped"
             emptyMessage="No companies skipped yet"
           />
 
-          {/* Student's Custom Rejection Notes */}
-          {allCustomNotes.length > 0 && (
+          {/* Line-by-Line Topic Percentage Stats */}
+          {topicStats.length > 0 && (
+            <div className="p-3.5 bg-[#131B2E] border border-slate-800 rounded-xl space-y-2">
+              <span className="text-[11px] font-semibold text-slate-300 block">
+                Reasons Breakdown (Line-by-Line %):
+              </span>
+              <div className="space-y-2">
+                {topicStats.map((topic) => (
+                  <div key={topic.id} className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                        <span
+                          className="w-2 h-2 rounded-full inline-block shrink-0"
+                          style={{ backgroundColor: topic.color }}
+                        />
+                        <span>{topic.label}</span>
+                      </span>
+                      <span className="font-mono text-slate-400 font-semibold">
+                        {topic.count} {topic.count === 1 ? 'co' : 'cos'} • {topic.percentage}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-[#0B0F19] h-1.5 rounded-full overflow-hidden border border-slate-800">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${topic.percentage}%`,
+                          backgroundColor: topic.color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Student's Specific Reason Notes */}
+          {specificNotes.length > 0 && (
             <div className="p-3.5 bg-[#131B2E] border border-slate-800 rounded-xl">
               <span className="text-[11px] font-semibold text-slate-300 block mb-2">
                 Your Specific Reason Notes:
               </span>
               <div className="flex flex-col gap-1.5">
-                {allCustomNotes.map((item, idx) => (
-                  <div 
-                    key={idx}
-                    className="text-[11px] text-slate-300 bg-[#0B0F19] p-2 rounded-lg border border-slate-800 flex items-start gap-1.5"
+                {specificNotes.map((item) => (
+                  <div
+                    key={item.id}
+                    className="text-[11px] text-slate-300 bg-[#0B0F19] p-2 rounded-lg border border-slate-800 flex flex-col gap-1"
                   >
-                    <span className="text-rose-400 font-medium shrink-0">[{item.tag}]</span>
-                    <span className="italic break-words">"{item.note}"</span>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-bold text-white text-xs">{item.companyName}</span>
+                      <div className="flex flex-wrap gap-1">
+                        {item.tags.map((t) => (
+                          <span key={t} className="text-[9px] font-medium text-rose-300 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <span className="italic text-slate-300 break-words">"{item.note}"</span>
                   </div>
                 ))}
               </div>
@@ -197,7 +345,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
 
       </div>
 
-      {/* SECTION: ALL COMPANIES (Mobile Chronological Feed) */}
+      {/* SECTION: ALL COMPANIES */}
       <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg shadow-black/20">
         <div className="flex items-center justify-between gap-2 pb-3.5 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -209,16 +357,16 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
                 All Companies
               </h3>
               <p className="text-[11px] text-slate-400">
-                Placement record of all {chronologicalCompanies.length} companies in order of arrival
+                Placement record of all {companies.length} companies
               </p>
             </div>
           </div>
           <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-            {chronologicalCompanies.length} Cos
+            {companies.length} Cos
           </span>
         </div>
 
-        {chronologicalCompanies.length === 0 ? (
+        {companies.length === 0 ? (
           <div className="py-10 text-center text-slate-400">
             <Clock className="w-7 h-7 mx-auto text-slate-600 mb-2" />
             <p className="text-xs font-semibold text-white">No companies recorded yet</p>
@@ -228,8 +376,8 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
           </div>
         ) : (
           <div className="mt-3.5 space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-            {chronologicalCompanies.map((company, index) => {
-              const arrivalNum = index + 1;
+            {companies.map((company, index) => {
+              const sequenceNum = index + 1;
               const dateAdded = new Date(company.createdAt).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
@@ -244,7 +392,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 font-mono text-xs">
                       <span className="w-5 h-5 rounded-md bg-indigo-950/80 text-indigo-300 flex items-center justify-center font-bold text-[10px] border border-indigo-700/50">
-                        #{arrivalNum}
+                        #{sequenceNum}
                       </span>
                       <span className="text-[10px] text-slate-500 font-sans">{dateAdded}</span>
                     </div>

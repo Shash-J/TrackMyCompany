@@ -172,6 +172,81 @@ export const App: React.FC = () => {
     }
   };
 
+  // Drag and drop reordering state & handlers
+  const [draggedCompanyId, setDraggedCompanyId] = useState<string | null>(null);
+  const [dragOverCompanyId, setDragOverCompanyId] = useState<string | null>(null);
+
+  const reorderCompanies = (sourceId: string, targetId: string, currentFiltered: Company[]) => {
+    if (sourceId === targetId) return;
+
+    const sourceIdx = currentFiltered.findIndex((c) => c.id === sourceId);
+    const targetIdx = currentFiltered.findIndex((c) => c.id === targetId);
+    if (sourceIdx === -1 || targetIdx === -1) return;
+
+    // 1. Reorder within current filtered list
+    const newFiltered = [...currentFiltered];
+    const [movedItem] = newFiltered.splice(sourceIdx, 1);
+    newFiltered.splice(targetIdx, 0, movedItem);
+
+    // 2. Map reordered items back to master list so All Companies and storage are synchronized
+    if (currentFiltered.length === companies.length) {
+      saveCompanies(newFiltered);
+      setCompanies(newFiltered);
+      return;
+    }
+
+    const filteredIdSet = new Set(currentFiltered.map((c) => c.id));
+    const newMaster = [...companies];
+    const masterPositions: number[] = [];
+
+    companies.forEach((c, idx) => {
+      if (filteredIdSet.has(c.id)) {
+        masterPositions.push(idx);
+      }
+    });
+
+    masterPositions.forEach((pos, i) => {
+      newMaster[pos] = newFiltered[i];
+    });
+
+    saveCompanies(newMaster);
+    setCompanies(newMaster);
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedCompanyId(id);
+    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverCompanyId !== id) {
+      setDragOverCompanyId(id);
+    }
+  };
+
+  const handleDragLeave = (_e: React.DragEvent, id: string) => {
+    if (dragOverCompanyId === id) {
+      setDragOverCompanyId(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (draggedCompanyId && draggedCompanyId !== targetId) {
+      reorderCompanies(draggedCompanyId, targetId, filteredCompanies);
+    }
+    setDraggedCompanyId(null);
+    setDragOverCompanyId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedCompanyId(null);
+    setDragOverCompanyId(null);
+  };
+
   const handleImportComplete = (imported: Company[], importedProfile?: StudentProfile) => {
     if (importedProfile && importedProfile.name) {
       saveProfile(importedProfile);
@@ -381,17 +456,38 @@ export const App: React.FC = () => {
 
               {/* Companies Feed (Each card shows ONLY company name until clicked) */}
               {filteredCompanies.length > 0 ? (
-                <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-                  {filteredCompanies.map((company) => (
-                    <CompanyCard
-                      key={company.id}
-                      company={company}
-                      onEdit={openEditModal}
-                      onDelete={handleDeleteCompany}
-                      onQuickStatusChange={handleQuickStatusChange}
-                      onUpdateOAStatus={handleUpdateOAStatus}
-                    />
-                  ))}
+                <div className="space-y-2">
+                  {/* Subtle reorder tip when multiple companies exist and not searching */}
+                  {filteredCompanies.length > 1 && !searchQuery.trim() && (
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                      <span>{filteredCompanies.length} companies</span>
+                      <span className="flex items-center gap-1 text-slate-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block animate-pulse" />
+                        <span>Drag cards to reorder</span>
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+                    {filteredCompanies.map((company) => (
+                      <CompanyCard
+                        key={company.id}
+                        company={company}
+                        onEdit={openEditModal}
+                        onDelete={handleDeleteCompany}
+                        onQuickStatusChange={handleQuickStatusChange}
+                        onUpdateOAStatus={handleUpdateOAStatus}
+                        draggable={!searchQuery.trim()}
+                        onDragStart={handleDragStart}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onDragEnd={handleDragEnd}
+                        isDragging={draggedCompanyId === company.id}
+                        isDragOver={dragOverCompanyId === company.id}
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : (
                 /* Clean Empty State */

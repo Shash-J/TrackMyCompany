@@ -24,7 +24,7 @@ export const exportCompaniesToExcel = (
     'OA Drive Date': c.oaDate ? c.oaDate : '',
     'OA Shortlist Status': c.oaStatus === 'shortlisted' ? 'Shortlisted' : c.oaStatus === 'not_shortlisted' ? 'Not Shortlisted' : c.oaStatus === 'pending' ? 'Pending' : '',
     'Priority': c.priority || 'Medium',
-    'Rejection Reason Tag': c.rejectionReasonTag || '',
+    'Rejection Reason Tag': c.rejectionReasonTags?.length ? c.rejectionReasonTags.join(', ') : (c.rejectionReasonTag || ''),
     'Rejection Custom Note': c.customReasonNote || '',
     'Google Form Link': c.formLink || '',
     'Application Deadline': c.applicationDeadline || '',
@@ -141,7 +141,7 @@ export const exportCompaniesToCSV = (companies: Company[], filename: string = 'C
     'OA Date': c.oaDate || '',
     'OA Status': c.oaStatus || '',
     'Priority': c.priority || '',
-    'Rejection Reason': c.rejectionReasonTag || '',
+    'Rejection Reason': c.rejectionReasonTags?.length ? c.rejectionReasonTags.join(', ') : (c.rejectionReasonTag || ''),
     'Custom Reason Note': c.customReasonNote || '',
     'Form Link': c.formLink || '',
     'Notes': c.notes || '',
@@ -338,27 +338,38 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
             status = 'applied';
           }
 
-          // Parse Rejection Reason
+          // Parse Rejection Reasons (single or multi-tag support)
           let rejectionReasonTag: RejectionReasonTag | undefined = undefined;
+          let rejectionReasonTags: RejectionReasonTag[] | undefined = undefined;
           const rawReason = String(normalized['rejectionreason'] || normalized['rejectionreasontag'] || normalized['reason'] || '');
           if (rawReason) {
-            const lowerReason = rawReason.toLowerCase();
-            if (lowerReason.includes('ctc') || lowerReason.includes('pay') || lowerReason.includes('salary')) {
-              rejectionReasonTag = 'Low CTC';
-            } else if (lowerReason.includes('bond') || lowerReason.includes('agreement')) {
-              rejectionReasonTag = 'Strict Bond / Service Agreement';
-            } else if (lowerReason.includes('location')) {
-              rejectionReasonTag = 'Location Not Preferred';
-            } else if (lowerReason.includes('cgpa') || lowerReason.includes('criteria') || lowerReason.includes('eligib')) {
-              rejectionReasonTag = 'CGPA / Branch Ineligible';
-            } else if (lowerReason.includes('role') || lowerReason.includes('profile')) {
-              rejectionReasonTag = 'Not Interested in Role';
-            } else if (lowerReason.includes('focus') || lowerReason.includes('other comp')) {
-              rejectionReasonTag = 'Focusing on Other Companies';
-            } else if (lowerReason.includes('pbc') || lowerReason.includes('product based')) {
-              rejectionReasonTag = 'PBC';
-            } else {
-              rejectionReasonTag = 'Other';
+            const parts = rawReason.split(/[,;/|]+/).map((s) => s.trim()).filter(Boolean);
+            const detectedTags: RejectionReasonTag[] = [];
+
+            parts.forEach((part) => {
+              const lower = part.toLowerCase();
+              if (lower.includes('ctc') || lower.includes('pay') || lower.includes('salary')) {
+                if (!detectedTags.includes('Low CTC')) detectedTags.push('Low CTC');
+              } else if (lower.includes('bond') || lower.includes('agreement')) {
+                if (!detectedTags.includes('Strict Bond / Service Agreement')) detectedTags.push('Strict Bond / Service Agreement');
+              } else if (lower.includes('location')) {
+                if (!detectedTags.includes('Location Not Preferred')) detectedTags.push('Location Not Preferred');
+              } else if (lower.includes('cgpa') || lower.includes('criteria') || lower.includes('eligib')) {
+                if (!detectedTags.includes('CGPA / Branch Ineligible')) detectedTags.push('CGPA / Branch Ineligible');
+              } else if (lower.includes('role') || lower.includes('profile')) {
+                if (!detectedTags.includes('Not Interested in Role')) detectedTags.push('Not Interested in Role');
+              } else if (lower.includes('focus') || lower.includes('other comp')) {
+                if (!detectedTags.includes('Focusing on Other Companies')) detectedTags.push('Focusing on Other Companies');
+              } else if (lower.includes('pbc') || lower.includes('product based')) {
+                if (!detectedTags.includes('PBC')) detectedTags.push('PBC');
+              } else {
+                if (!detectedTags.includes('Other')) detectedTags.push('Other');
+              }
+            });
+
+            if (detectedTags.length > 0) {
+              rejectionReasonTags = detectedTags;
+              rejectionReasonTag = detectedTags[0];
             }
           }
 
@@ -412,6 +423,7 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
             ctc: ctc.trim(),
             status,
             rejectionReasonTag,
+            rejectionReasonTags,
             customReasonNote: customReasonNote.trim() || undefined,
             formSubmitted,
             formSubmittedDate,

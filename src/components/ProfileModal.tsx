@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, GraduationCap, ArrowRight, X } from 'lucide-react';
+import { ShieldCheck, GraduationCap, ArrowRight, X, Code2 } from 'lucide-react';
+import { GithubIcon } from './GithubIcon';
 import type { StudentProfile } from '../types';
 
 interface ProfileModalProps {
@@ -166,6 +167,29 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </button>
             </div>
           )}
+
+          {/* About TrackMyCompany (Open Source, Privacy & Info) */}
+          <div className="pt-4 border-t border-slate-800/80 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <Code2 className="w-3.5 h-3.5 text-purple-400" />
+                <span>About TrackMyCompany</span>
+              </span>
+              <a
+                href="https://github.com/Shash-J/TrackMyCompany.git"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                <GithubIcon className="w-3 h-3" />
+                <span>GitHub Repo</span>
+              </a>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              100% Client-Side Privacy: All data is saved exclusively in your browser's local storage. Free and open-source project built for students.
+            </p>
+          </div>
         </form>
       </div>
     </div>

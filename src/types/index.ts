@@ -34,6 +34,7 @@ export interface Company {
   
   // Fields when status === 'not_applied'
   rejectionReasonTag?: RejectionReasonTag;
+  rejectionReasonTags?: RejectionReasonTag[];
   customReasonNote?: string;
   
   // Fields when status === 'applied'

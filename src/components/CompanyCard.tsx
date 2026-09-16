@@ -10,7 +10,8 @@ import {
   ChevronDown, 
   ChevronUp,
   Tag,
-  Sparkles
+  Sparkles,
+  GripVertical
 } from 'lucide-react';
 import type { Company, OAShortlistStatus } from '../types';
 
@@ -20,6 +21,15 @@ interface CompanyCardProps {
   onDelete: (id: string) => void;
   onQuickStatusChange: (id: string, status: 'applied' | 'not_applied') => void;
   onUpdateOAStatus: (id: string, oaStatus: OAShortlistStatus) => void;
+  // Drag and drop reordering props
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent, id: string) => void;
+  onDragOver?: (e: React.DragEvent, id: string) => void;
+  onDragLeave?: (e: React.DragEvent, id: string) => void;
+  onDrop?: (e: React.DragEvent, id: string) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+  isDragging?: boolean;
+  isDragOver?: boolean;
 }
 
 export const CompanyCard: React.FC<CompanyCardProps> = ({
@@ -28,21 +38,55 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
   onDelete,
   onQuickStatusChange,
   onUpdateOAStatus,
+  draggable = false,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+  isDragging = false,
+  isDragOver = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const isApplied = company.status === 'applied';
   const isOASelected = company.oaStatus === 'shortlisted';
+  const rejectionTags = company.rejectionReasonTags?.length 
+    ? company.rejectionReasonTags 
+    : (company.rejectionReasonTag ? [company.rejectionReasonTag] : []);
 
   return (
-    <div className="bg-[#131B2E] border border-slate-800/90 rounded-2xl transition-all duration-200 shadow-md shadow-black/20 overflow-hidden hover:border-indigo-500/30">
+    <div 
+      draggable={draggable}
+      onDragStart={(e) => onDragStart && onDragStart(e, company.id)}
+      onDragOver={(e) => onDragOver && onDragOver(e, company.id)}
+      onDragLeave={(e) => onDragLeave && onDragLeave(e, company.id)}
+      onDrop={(e) => onDrop && onDrop(e, company.id)}
+      onDragEnd={(e) => onDragEnd && onDragEnd(e)}
+      className={`bg-[#131B2E] border rounded-2xl transition-all duration-200 shadow-md shadow-black/20 overflow-hidden ${
+        isDragOver 
+          ? 'border-indigo-500 ring-2 ring-indigo-500/40 bg-[#162038] scale-[1.01]' 
+          : isDragging 
+            ? 'opacity-40 border-dashed border-slate-600' 
+            : 'border-slate-800/90 hover:border-indigo-500/30'
+      }`}
+    >
       
-      {/* CARD HEADER / COLLAPSED STATE: ONLY COMPANY NAME */}
+      {/* CARD HEADER / COLLAPSED STATE: ONLY COMPANY NAME + OPTIONAL DRAG HANDLE */}
       <div 
         onClick={() => setIsExpanded(!isExpanded)}
         className="px-4 py-3.5 flex items-center justify-between gap-3 cursor-pointer select-none group"
       >
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          {draggable && (
+            <div 
+              className="text-slate-600 group-hover:text-slate-400 cursor-grab active:cursor-grabbing p-0.5 -ml-1 transition-colors shrink-0" 
+              title="Drag to reorder"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="w-4 h-4" />
+            </div>
+          )}
           <h3 className="text-base font-bold text-white tracking-tight leading-tight truncate group-hover:text-indigo-300 transition-colors">
             {company.name}
           </h3>
@@ -198,18 +242,25 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
 
           {/* DYNAMIC: SKIPPED REASON */}
           {!isApplied && (
-            <div className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">Reason for skipping:</span>
-                {company.rejectionReasonTag && (
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1">
-                    <Tag className="w-3 h-3" />
-                    {company.rejectionReasonTag}
-                  </span>
+            <div className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+                <span className="text-slate-400 shrink-0">Reasons for skipping:</span>
+                {rejectionTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {rejectionTags.map((tag) => (
+                      <span 
+                        key={tag}
+                        className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1"
+                      >
+                        <Tag className="w-3 h-3" />
+                        <span>{tag}</span>
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
               {company.customReasonNote && (
-                <p className="text-xs text-slate-300 italic pt-1">
+                <p className="text-xs text-slate-300 italic pt-1 border-t border-slate-800/60">
                   "{company.customReasonNote}"
                 </p>
               )}
