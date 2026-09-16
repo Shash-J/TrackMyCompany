@@ -7,7 +7,9 @@ import {
   FileSpreadsheet, 
   Calendar,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import type { 
   Company, 
@@ -47,6 +49,7 @@ export const App: React.FC = () => {
   // Dashboard Filter State: Applied companies by default (strictly 'applied' | 'not_applied')
   const [statusFilter, setStatusFilter] = useState<'applied' | 'not_applied'>('applied');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
 
   // Modals
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -86,17 +89,26 @@ export const App: React.FC = () => {
   // Compute Statistics
   const stats = useMemo(() => calculateStatistics(companies), [companies]);
 
-  // Upcoming Drive: Immediate next coming company based on drive date (excludes not_shortlisted drives)
-  const upcomingDrive = useMemo(() => {
+  // Upcoming Drives: Immediate next coming company and full list of upcoming drives (excludes not_shortlisted drives)
+  const { immediateNextDrive, allUpcomingDrives } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const drives = companies
       .filter((c) => c.status === 'applied' && !!c.oaDate && c.oaStatus !== 'not_shortlisted')
       .sort((a, b) => new Date(a.oaDate!).getTime() - new Date(b.oaDate!).getTime());
 
-    if (drives.length === 0) return null;
-    const nextComing = drives.find((c) => new Date(c.oaDate!).getTime() >= today.getTime());
-    return nextComing || drives[0];
+    if (drives.length === 0) {
+      return { immediateNextDrive: null, allUpcomingDrives: [] };
+    }
+
+    const futureDrives = drives.filter((c) => new Date(c.oaDate!).getTime() >= today.getTime());
+    const list = futureDrives.length > 0 ? futureDrives : drives;
+    const nextComing = futureDrives.length > 0 ? futureDrives[0] : drives[0];
+
+    return {
+      immediateNextDrive: nextComing,
+      allUpcomingDrives: list,
+    };
   }, [companies]);
 
   // Profile Save
@@ -355,69 +367,84 @@ export const App: React.FC = () => {
           {currentTab === 'dashboard' && (
             <div className="space-y-4">
               
-              {/* SECTION: UPCOMING DRIVE (SINGULAR - Only 1 immediate next company) */}
-              {upcomingDrive && (
+              {/* SECTION: UPCOMING DRIVE (SINGULAR by default, or ALL when toggled) */}
+              {immediateNextDrive && (
                 <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-3.5 shadow-lg shadow-black/20">
                   <div className="flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-amber-400" />
                       <h2 className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
-                        Upcoming Drive
+                        Upcoming Drive{showAllUpcoming && allUpcomingDrives.length > 1 ? 's' : ''}
                       </h2>
                     </div>
-                    <span className="text-[10px] text-slate-400">
-                      Immediate Next Drive
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAllUpcoming((prev) => !prev)}
+                      className="text-[10px] font-medium text-slate-300 hover:text-amber-300 transition-colors flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800/80 hover:bg-slate-800 border border-slate-700/70 cursor-pointer select-none active:scale-95"
+                      title={showAllUpcoming ? 'Click to show immediate next drive only' : 'Click to show all upcoming drives'}
+                    >
+                      <span>{showAllUpcoming ? 'all upcoming drives' : 'Immediate Next Drive'}</span>
+                      {showAllUpcoming ? (
+                        <ChevronUp className="w-3 h-3 text-amber-400" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3 text-slate-400" />
+                      )}
+                    </button>
                   </div>
 
-                  {(() => {
-                    const badge = getDaysRemainingBadge(upcomingDrive.oaDate!);
-                    return (
-                      <div className="bg-[#0B0F19] border border-slate-800/90 rounded-xl p-3 flex flex-col gap-2 hover:border-indigo-500/40 transition-colors">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <h3 className="text-sm font-bold text-white truncate">{upcomingDrive.name}</h3>
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border shrink-0 ${badge.color}`}>
-                                {badge.text}
-                              </span>
+                  <div className={showAllUpcoming ? 'space-y-2.5 max-h-[440px] overflow-y-auto pr-0.5 custom-scrollbar' : ''}>
+                    {(showAllUpcoming ? allUpcomingDrives : [immediateNextDrive]).map((drive) => {
+                      const badge = getDaysRemainingBadge(drive.oaDate!);
+                      return (
+                        <div
+                          key={drive.id}
+                          className="bg-[#0B0F19] border border-slate-800/90 rounded-xl p-3 flex flex-col gap-2 hover:border-indigo-500/40 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <h3 className="text-sm font-bold text-white truncate">{drive.name}</h3>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border shrink-0 ${badge.color}`}>
+                                  {badge.text}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                                {drive.type || drive.role || 'Full Time (FTE)'} • <span className="text-indigo-300 font-mono font-semibold">{drive.ctc}</span>
+                              </p>
                             </div>
-                            <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                              {upcomingDrive.type || upcomingDrive.role || 'Full Time (FTE)'} • <span className="text-indigo-300 font-mono font-semibold">{upcomingDrive.ctc}</span>
-                            </p>
+                          </div>
+
+                          {/* Date & OA Status */}
+                          <div className="pt-2 border-t border-slate-800/70 flex items-center justify-between text-xs">
+                            <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-amber-400" />
+                              {new Date(drive.oaDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </span>
+
+                            <div className="flex items-center gap-1.5">
+                              {drive.oaStatus === 'shortlisted' ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                                  <CheckCircle2 className="w-2.5 h-2.5" />
+                                  Selected
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700">
+                                  Awaiting OA
+                                </span>
+                              )}
+
+                              <button
+                                onClick={() => openEditModal(drive)}
+                                className="text-[10px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 border border-slate-700 active:scale-95"
+                              >
+                                Edit
+                              </button>
+                            </div>
                           </div>
                         </div>
-
-                        {/* Date & OA Status */}
-                        <div className="pt-2 border-t border-slate-800/70 flex items-center justify-between text-xs">
-                          <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-amber-400" />
-                            {new Date(upcomingDrive.oaDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                          </span>
-
-                          <div className="flex items-center gap-1.5">
-                            {upcomingDrive.oaStatus === 'shortlisted' ? (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-                                <CheckCircle2 className="w-2.5 h-2.5" />
-                                Selected
-                              </span>
-                            ) : (
-                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700">
-                                Awaiting OA
-                              </span>
-                            )}
-
-                            <button
-                              onClick={() => openEditModal(upcomingDrive)}
-                              className="text-[10px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 border border-slate-700 active:scale-95"
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
