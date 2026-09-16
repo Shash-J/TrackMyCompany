@@ -22,7 +22,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
 
-  // 1. Status Distribution Data
+  // 1. Status Distribution Data (Applied vs Skipped)
   const statusChartItems: PieChartItem[] = [
     {
       label: 'Applied',
@@ -30,14 +30,9 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
       color: '#10B981', // Emerald
     },
     {
-      label: 'Skipped / Not Applied',
+      label: 'Skipped',
       value: stats.totalNotApplied,
       color: '#F43F5E', // Rose
-    },
-    {
-      label: 'Undecided',
-      value: stats.totalUndecided,
-      color: '#64748B', // Slate
     },
   ];
 
@@ -83,21 +78,17 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
     color: reasonColors[item.tag] || '#6366F1',
   }));
 
-  // 4. OA Conversion Breakdown Data (Applied companies)
+  // 4. OA Selection Breakdown Data (Applied companies: OA Selected vs Not Selected)
+  const notSelectedCount = Math.max(0, stats.totalApplied - stats.oaShortlistedCount);
   const oaChartItems: PieChartItem[] = [
     {
-      label: 'Shortlisted',
+      label: 'OA Selected',
       value: stats.oaShortlistedCount,
       color: '#10B981', // Emerald
     },
     {
-      label: 'Under Review / Pending',
-      value: stats.oaPendingCount,
-      color: '#F59E0B', // Amber
-    },
-    {
-      label: 'Not Shortlisted',
-      value: stats.oaNotShortlistedCount,
+      label: 'Not Selected',
+      value: notSelectedCount,
       color: '#EF4444', // Red
     },
   ];
@@ -217,7 +208,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
 
         {/* PIE 4: OA SHORTLIST & EVALUATION FUNNEL */}
         <PieChart
-          title="OA Shortlist Status (Applied Drives)"
+          title="OA Selected Status (Applied Drives)"
           items={oaChartItems}
           centerLabel={`${stats.totalApplied}`}
           centerSublabel="Applied"

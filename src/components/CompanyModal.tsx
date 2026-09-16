@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Building2, Calendar, DollarSign, Check, Award, AlertCircle, Tag } from 'lucide-react';
-import type { Company, TierCategory, ApplicationStatus, RejectionReasonTag, PriorityLevel, OAShortlistStatus } from '../types';
+import type { Company, TierCategory, ApplicationStatus, RejectionReasonTag } from '../types';
 import { REJECTION_PRESET_TAGS } from '../services/storage';
 
 interface CompanyModalProps {
@@ -28,10 +28,8 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
   const [status, setStatus] = useState<ApplicationStatus>(defaultStatus);
 
   // When Applied
-  const [formSubmitted, setFormSubmitted] = useState(true);
-  const [priority, setPriority] = useState<PriorityLevel>('High');
   const [oaDate, setOaDate] = useState('');
-  const [oaStatus, setOaStatus] = useState<OAShortlistStatus>('pending');
+  const [oaSelected, setOaSelected] = useState<boolean>(false);
 
   // When Not Applied
   const [rejectionReasonTag, setRejectionReasonTag] = useState<RejectionReasonTag>('Low CTC');
@@ -47,12 +45,10 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setCtc(editCompany.ctc || '');
       setBusinessModel(editCompany.businessModel || '');
       setNotes(editCompany.notes || '');
-      setStatus(editCompany.status);
+      setStatus(editCompany.status === 'not_applied' ? 'not_applied' : 'applied');
 
-      setFormSubmitted(editCompany.formSubmitted ?? true);
-      setPriority(editCompany.priority || 'High');
       setOaDate(editCompany.oaDate || editCompany.applicationDeadline || '');
-      setOaStatus(editCompany.oaStatus || 'pending');
+      setOaSelected(editCompany.oaStatus === 'shortlisted');
 
       setRejectionReasonTag(editCompany.rejectionReasonTag || 'Low CTC');
       setCustomReasonNote(editCompany.customReasonNote || '');
@@ -64,11 +60,9 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setCtc('');
       setBusinessModel('');
       setNotes('');
-      setStatus(defaultStatus);
-      setFormSubmitted(true);
-      setPriority('High');
+      setStatus(defaultStatus === 'not_applied' ? 'not_applied' : 'applied');
       setOaDate('');
-      setOaStatus('pending');
+      setOaSelected(false);
       setRejectionReasonTag('Low CTC');
       setCustomReasonNote('');
     }
@@ -84,6 +78,8 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       return;
     }
 
+    const currentStatus: ApplicationStatus = status === 'not_applied' ? 'not_applied' : 'applied';
+
     onSave(
       {
         name: name.trim(),
@@ -94,16 +90,15 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
         formLink: editCompany?.formLink || undefined,
         applicationDeadline: oaDate || editCompany?.applicationDeadline || undefined,
         notes: notes.trim() || undefined,
-        status,
+        status: currentStatus,
         // Applied fields
-        formSubmitted: status === 'applied' ? formSubmitted : undefined,
-        formSubmittedDate: status === 'applied' ? (editCompany?.formSubmittedDate || new Date().toISOString()) : undefined,
-        priority: status === 'applied' ? priority : undefined,
+        formSubmitted: currentStatus === 'applied' ? true : undefined,
+        formSubmittedDate: currentStatus === 'applied' ? (editCompany?.formSubmittedDate || new Date().toISOString()) : undefined,
         oaDate: oaDate ? oaDate : undefined,
-        oaStatus: status === 'applied' ? oaStatus : undefined,
+        oaStatus: currentStatus === 'applied' ? (oaSelected ? 'shortlisted' : 'not_shortlisted') : undefined,
         // Not applied fields
-        rejectionReasonTag: status === 'not_applied' ? rejectionReasonTag : undefined,
-        customReasonNote: status === 'not_applied' && customReasonNote.trim() ? customReasonNote.trim() : undefined,
+        rejectionReasonTag: currentStatus === 'not_applied' ? rejectionReasonTag : undefined,
+        customReasonNote: currentStatus === 'not_applied' && customReasonNote.trim() ? customReasonNote.trim() : undefined,
       },
       editCompany ? editCompany.id : undefined
     );
@@ -215,12 +210,12 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
             </div>
           </div>
 
-          {/* Decision Status Selector (Applied vs Not Applied vs Undecided) */}
-          <div className="p-4 rounded-xl bg-[#0B0F19] border border-slate-800">
+          {/* Decision Status Selector (Applied vs Skipped) */}
+          <div className="p-3.5 rounded-xl bg-[#0B0F19] border border-slate-800">
             <label className="block text-xs font-semibold text-slate-200 mb-2">
-              Your Placement Decision for this Company:
+              Placement Decision:
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setStatus('applied')}
@@ -244,97 +239,50 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                 }`}
               >
                 <X className="w-3.5 h-3.5" />
-                <span>Not Applied</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStatus('undecided')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  status === 'undecided'
-                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/30'
-                    : 'bg-[#131B2E] border-slate-700 text-slate-300 hover:border-slate-600'
-                }`}
-              >
-                <span>Undecided</span>
+                <span>Skipped</span>
               </button>
             </div>
           </div>
 
           {/* DYNAMIC SECTION: IF APPLIED */}
           {status === 'applied' && (
-            <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-800/40 space-y-4 animate-fadeIn">
+            <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-800/40 space-y-3 animate-fadeIn">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  Application & OA Drive Details
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  Application Status
                 </span>
-                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={formSubmitted}
-                    onChange={(e) => setFormSubmitted(e.target.checked)}
-                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-[#0B0F19] border-slate-700"
-                  />
-                  <span>Form Submitted</span>
-                </label>
+                <span className="text-[11px] text-emerald-400/90 font-medium">Applied</span>
               </div>
 
-              {/* Priority */}
+              {/* OA Selected (Yes / No) */}
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Priority
-                </label>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value as PriorityLevel)}
-                  className="w-full px-3 py-2 bg-[#0B0F19] border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="High">P1 - High Priority</option>
-                  <option value="Medium">P2 - Medium Priority</option>
-                  <option value="Low">P3 - Low Priority</option>
-                </select>
-              </div>
-
-              {/* OA Shortlist Status */}
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1">
+                <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1">
                   <Award className="w-3.5 h-3.5 text-amber-400" />
-                  <span>OA Shortlist Status (Did college shortlist you to write OA?)</span>
+                  <span>OA Selected?</span>
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setOaStatus('pending')}
-                    className={`py-1.5 px-2 rounded-lg border text-xs text-center transition-all ${
-                      oaStatus === 'pending'
-                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-200 font-bold'
+                    onClick={() => setOaSelected(true)}
+                    className={`py-2 px-3 rounded-lg border text-xs text-center font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      oaSelected
+                        ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20'
                         : 'bg-[#0B0F19] border-slate-800 text-slate-400 hover:text-white'
                     }`}
                   >
-                    ⏳ Pending
+                    <span>✓ Yes (Selected)</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setOaStatus('shortlisted')}
-                    className={`py-1.5 px-2 rounded-lg border text-xs text-center transition-all ${
-                      oaStatus === 'shortlisted'
-                        ? 'bg-emerald-500/25 border-emerald-500/60 text-emerald-200 font-bold'
+                    onClick={() => setOaSelected(false)}
+                    className={`py-2 px-3 rounded-lg border text-xs text-center font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      !oaSelected
+                        ? 'bg-rose-950/80 border-rose-500/60 text-rose-300'
                         : 'bg-[#0B0F19] border-slate-800 text-slate-400 hover:text-white'
                     }`}
                   >
-                    🎉 Shortlisted
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setOaStatus('not_shortlisted')}
-                    className={`py-1.5 px-2 rounded-lg border text-xs text-center transition-all ${
-                      oaStatus === 'not_shortlisted'
-                        ? 'bg-rose-500/25 border-rose-500/60 text-rose-200 font-bold'
-                        : 'bg-[#0B0F19] border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    ❌ Not Shortlisted
+                    <span>✕ Not Selected</span>
                   </button>
                 </div>
               </div>

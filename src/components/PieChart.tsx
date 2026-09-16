@@ -107,8 +107,17 @@ export const PieChart: React.FC<PieChartProps> = ({
       ) : (
         <div className="flex flex-col sm:flex-row items-center justify-around gap-6">
           {/* Round Pie / Donut SVG */}
-          <div className="relative w-44 h-44 shrink-0">
-            <svg viewBox="0 0 200 200" className="w-full h-full transform transition-transform">
+          <div 
+            className="relative w-44 h-44 shrink-0" 
+            style={{ width: '176px', height: '176px', minWidth: '176px', minHeight: '176px' }}
+          >
+            <svg 
+              width={176} 
+              height={176} 
+              viewBox="0 0 200 200" 
+              className="w-full h-full transform transition-transform"
+              style={{ width: '176px', height: '176px', minWidth: '176px', minHeight: '176px' }}
+            >
               {slices.map((slice) => {
                 const isHovered = hoveredIndex === slice.index;
                 return (

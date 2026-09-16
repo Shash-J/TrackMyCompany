@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   CheckCircle2, 
-  Building2, 
+  XCircle, 
   Plus, 
   BarChart3, 
   FileSpreadsheet
@@ -11,12 +11,12 @@ import type { NavTab } from './Navbar';
 interface MobileBottomNavProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
-  statusFilter: 'all' | 'applied' | 'not_applied';
-  onSelectStatusFilter: (status: 'all' | 'applied' | 'not_applied') => void;
+  statusFilter: 'applied' | 'not_applied';
+  onSelectStatusFilter: (status: 'applied' | 'not_applied') => void;
   onOpenAddModal: () => void;
   onOpenImportExport: () => void;
   appliedCount: number;
-  totalCount: number;
+  skippedCount: number;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
@@ -27,10 +27,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenAddModal,
   onOpenImportExport,
   appliedCount,
-  totalCount,
+  skippedCount,
 }) => {
   const isAppliedActive = currentTab === 'dashboard' && statusFilter === 'applied';
-  const isAllActive = currentTab === 'dashboard' && statusFilter === 'all';
+  const isSkippedActive = currentTab === 'dashboard' && statusFilter === 'not_applied';
   const isStatsActive = currentTab === 'statistics';
 
   return (
@@ -59,27 +59,27 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <span className="text-[10px] mt-1 leading-none tracking-tight">Applied</span>
       </button>
 
-      {/* Tab 2: All Companies */}
+      {/* Tab 2: Skipped */}
       <button
         onClick={() => {
           onSelectTab('dashboard');
-          onSelectStatusFilter('all');
+          onSelectStatusFilter('not_applied');
         }}
         className={`flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all duration-150 active:scale-95 ${
-          isAllActive
-            ? 'text-indigo-400 font-bold'
+          isSkippedActive
+            ? 'text-rose-400 font-bold'
             : 'text-slate-400 hover:text-slate-200'
         }`}
       >
         <div className="relative">
-          <Building2 className={`w-5 h-5 ${isAllActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
-          {totalCount > 0 && (
-            <span className="absolute -top-1 -right-2 px-1 text-[9px] font-bold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 min-w-[14px] text-center leading-tight">
-              {totalCount}
+          <XCircle className={`w-5 h-5 ${isSkippedActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
+          {skippedCount > 0 && (
+            <span className="absolute -top-1 -right-2 px-1 text-[9px] font-bold rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 min-w-[14px] text-center leading-tight">
+              {skippedCount}
             </span>
           )}
         </div>
-        <span className="text-[10px] mt-1 leading-none tracking-tight">All Cos</span>
+        <span className="text-[10px] mt-1 leading-none tracking-tight">Skipped</span>
       </button>
 
       {/* Tab 3: Prominent Elevated + Add FAB */}
