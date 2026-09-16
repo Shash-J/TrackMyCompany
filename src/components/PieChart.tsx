@@ -54,15 +54,29 @@ export const PieChart: React.FC<PieChartProps> = ({
     const x4 = centerX + innerRadius * Math.cos(startAngle);
     const y4 = centerY + innerRadius * Math.sin(startAngle);
 
-    const largeArcFlag = sliceAngle > Math.PI ? 1 : 0;
+    const isFullCircle = validItems.length === 1 || sliceAngle >= 2 * Math.PI * 0.999;
+    let pathData: string;
 
-    const pathData = [
-      `M ${x1} ${y1}`,
-      `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
-      `L ${x3} ${y3}`,
-      `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}`,
-      'Z',
-    ].join(' ');
+    if (isFullCircle) {
+      pathData = [
+        `M ${centerX} ${centerY - radius}`,
+        `A ${radius} ${radius} 0 1 1 ${centerX} ${centerY + radius}`,
+        `A ${radius} ${radius} 0 1 1 ${centerX} ${centerY - radius}`,
+        `M ${centerX} ${centerY - innerRadius}`,
+        `A ${innerRadius} ${innerRadius} 0 1 0 ${centerX} ${centerY + innerRadius}`,
+        `A ${innerRadius} ${innerRadius} 0 1 0 ${centerX} ${centerY - innerRadius}`,
+        'Z',
+      ].join(' ');
+    } else {
+      const largeArcFlag = sliceAngle > Math.PI ? 1 : 0;
+      pathData = [
+        `M ${x1} ${y1}`,
+        `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+        `L ${x3} ${y3}`,
+        `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}`,
+        'Z',
+      ].join(' ');
+    }
 
     const percentage = Math.round((item.value / totalValue) * 100);
 
@@ -102,12 +116,14 @@ export const PieChart: React.FC<PieChartProps> = ({
                     key={slice.index}
                     d={slice.pathData}
                     fill={slice.item.color}
-                    className="cursor-pointer transition-all duration-200 hover:opacity-90"
+                    fillRule="evenodd"
+                    className="cursor-pointer transition-all duration-200 hover:opacity-90 active:opacity-80"
                     style={{
                       transform: isHovered ? 'scale(1.04)' : 'scale(1)',
                       transformOrigin: `${centerX}px ${centerY}px`,
                       filter: isHovered ? 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.5))' : 'none',
                     }}
+                    onClick={() => setHoveredIndex(hoveredIndex === slice.index ? null : slice.index)}
                     onMouseEnter={() => setHoveredIndex(slice.index)}
                     onMouseLeave={() => setHoveredIndex(null)}
                   />
@@ -140,29 +156,30 @@ export const PieChart: React.FC<PieChartProps> = ({
           </div>
 
           {/* Color-Coded Legend */}
-          <div className="flex-1 w-full space-y-2">
+          <div className="flex-1 w-full space-y-1.5">
             {slices.map((slice) => {
               const isHovered = hoveredIndex === slice.index;
               return (
                 <div
                   key={slice.index}
+                  onClick={() => setHoveredIndex(hoveredIndex === slice.index ? null : slice.index)}
                   onMouseEnter={() => setHoveredIndex(slice.index)}
                   onMouseLeave={() => setHoveredIndex(null)}
-                  className={`flex items-center justify-between p-2 rounded-xl transition-all cursor-pointer ${
+                  className={`flex items-center justify-between p-2 rounded-xl transition-all cursor-pointer select-none active:scale-[0.99] ${
                     isHovered ? 'bg-[#0B0F19] border border-slate-700' : 'hover:bg-[#0B0F19]/50'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
                     <span
-                      className="w-3 h-3 rounded-full shrink-0"
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: slice.item.color }}
                     />
-                    <span className="text-xs font-semibold text-slate-200">
+                    <span className="text-xs font-semibold text-slate-200 truncate">
                       {slice.item.label}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 font-mono">
+                  <div className="flex items-center gap-2 font-mono shrink-0">
                     <span className="text-xs text-slate-400">
                       {slice.item.value}
                     </span>

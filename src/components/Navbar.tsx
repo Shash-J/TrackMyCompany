@@ -1,11 +1,8 @@
 import React from 'react';
 import { 
   Building2, 
-  BarChart3, 
-  Plus, 
   FileSpreadsheet, 
-  UserCheck, 
-  LayoutDashboard
+  UserCheck 
 } from 'lucide-react';
 import type { StudentProfile } from '../types';
 import { GithubIcon } from './GithubIcon';
@@ -13,110 +10,64 @@ import { GithubIcon } from './GithubIcon';
 export type NavTab = 'dashboard' | 'statistics';
 
 interface NavbarProps {
-  currentTab: NavTab;
+  currentTab?: NavTab;
   onSelectTab: (tab: NavTab) => void;
   profile: StudentProfile | null;
   onOpenProfile: () => void;
-  onOpenAddModal: () => void;
+  onOpenAddModal?: () => void;
   onOpenImportExport: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  currentTab,
   onSelectTab,
   profile,
   onOpenProfile,
-  onOpenAddModal,
   onOpenImportExport,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full glass-nav border-b border-slate-800/80 bg-[#0B0F19]/90 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-4">
+      <div className="max-w-md mx-auto px-3.5">
+        <div className="flex items-center justify-between h-14 gap-2">
           
           {/* Logo & Brand */}
           <div 
-            className="flex items-center gap-3 cursor-pointer" 
+            className="flex items-center gap-2.5 cursor-pointer select-none active:scale-95 transition-transform" 
             onClick={() => onSelectTab('dashboard')}
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 border border-indigo-400/30">
-              <Building2 className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-md shadow-indigo-500/25 border border-indigo-400/30 shrink-0">
+              <Building2 className="w-4 h-4 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
-                  TrackMyCompany
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Campus Placement Tracker for Students</p>
+              <span className="text-base font-bold tracking-tight text-white block leading-none">
+                TrackMyCompany
+              </span>
+              <span className="text-[10px] text-slate-400 block leading-tight mt-0.5">
+                Campus Tracker
+              </span>
             </div>
           </div>
 
-          {/* Center: Exactly Two Main Tabs */}
-          <nav className="flex items-center gap-1.5 bg-[#131B2E] p-1.5 rounded-xl border border-slate-800">
+          {/* Right Mobile Actions */}
+          <div className="flex items-center gap-1.5">
+            {/* Student Profile Corner */}
             <button
-              onClick={() => onSelectTab('dashboard')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-                currentTab === 'dashboard'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
+              onClick={onOpenProfile}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-indigo-500/30 hover:border-indigo-400/50 rounded-xl text-indigo-200 transition-all active:scale-95"
+              title="Student Profile"
             >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Dashboard</span>
+              <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="font-semibold text-[11px] max-w-[80px] truncate block">
+                {profile?.name || 'Profile'}
+              </span>
             </button>
 
-            <button
-              onClick={() => onSelectTab('statistics')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-                currentTab === 'statistics'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>Statistics</span>
-            </button>
-          </nav>
-
-          {/* Right Actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Import / Export */}
+            {/* Quick Excel / CSV Button */}
             <button
               onClick={onOpenImportExport}
               title="Import or Export Excel / CSV"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/60 rounded-xl transition-all"
+              className="p-2 text-slate-300 bg-slate-800/70 hover:bg-slate-700 border border-slate-700/60 rounded-xl transition-all active:scale-95"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Excel / CSV</span>
-            </button>
-
-            {/* Add Company Button */}
-            <button
-              onClick={onOpenAddModal}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-xl shadow-md shadow-indigo-600/25 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Company</span>
-            </button>
-
-            {/* Student Corner Pill */}
-            <button
-              onClick={onOpenProfile}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-indigo-500/30 hover:border-indigo-400/50 rounded-xl text-indigo-200 transition-all group"
-              title="Click to view/edit student profile"
-            >
-              <UserCheck className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
-              <div className="text-left hidden sm:block">
-                <span className="font-semibold block leading-tight">
-                  {profile?.name || 'Student Corner'}
-                </span>
-                {profile?.branch && (
-                  <span className="text-[10px] text-slate-400 block leading-none">
-                    {profile.branch} {profile.batch ? `'${profile.batch.slice(-2)}` : ''}
-                  </span>
-                )}
-              </div>
             </button>
 
             {/* GitHub Repo */}
@@ -124,10 +75,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               href="https://github.com/Shash-J/TrackMyCompany.git"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-xl border border-slate-700/50 transition-colors"
-              title="View on GitHub (Open Source)"
+              className="p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-xl border border-slate-700/50 transition-colors active:scale-95"
+              title="View on GitHub"
             >
-              <GithubIcon className="w-4 h-4" />
+              <GithubIcon className="w-3.5 h-3.5" />
             </a>
           </div>
 

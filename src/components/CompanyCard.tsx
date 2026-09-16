@@ -102,55 +102,53 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
   };
 
   return (
-    <div className="group relative bg-[#131B2E] border border-slate-800/90 hover:border-indigo-500/50 rounded-2xl p-5 transition-all duration-200 shadow-lg shadow-black/20 card-glow flex flex-col justify-between">
+    <div className="bg-[#131B2E] border border-slate-800/90 rounded-2xl p-4 transition-all duration-200 shadow-lg shadow-black/20 flex flex-col justify-between">
       
       {/* Top Section */}
       <div>
-        <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-start justify-between gap-2.5 mb-2.5">
           
           {/* Avatar and Company Title */}
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/80 flex items-center justify-center font-bold text-base text-indigo-300 shadow-inner group-hover:border-indigo-400/40 transition-colors">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/80 flex items-center justify-center font-bold text-sm text-indigo-300 shadow-inner shrink-0">
               {getInitials(company.name)}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug group-hover:text-indigo-200 transition-colors">
-                  {company.name}
-                </h3>
-              </div>
-              <p className="text-xs text-slate-400 italic">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-bold text-white tracking-tight leading-snug truncate">
+                {company.name}
+              </h3>
+              <p className="text-xs text-slate-400 italic truncate">
                 {company.role || 'Campus Recruitment'}
               </p>
             </div>
           </div>
 
-          {/* Quick Actions (Edit / Delete) */}
-          <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+          {/* Quick Actions (Edit / Delete) - Always visible for touch devices */}
+          <div className="flex items-center gap-1 shrink-0">
             {company.formLink && (
               <a
                 href={company.formLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Open Google Form"
-                className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800/80 rounded-lg transition-colors"
+                className="p-2 text-slate-400 hover:text-indigo-400 active:bg-slate-800 rounded-lg transition-colors"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-4 h-4" />
               </a>
             )}
             <button
               onClick={() => onEdit(company)}
               title="Edit details"
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-white active:bg-slate-800 rounded-lg transition-colors active:scale-95"
             >
-              <Edit3 className="w-3.5 h-3.5" />
+              <Edit3 className="w-4 h-4" />
             </button>
             <button
               onClick={() => onDelete(company.id)}
               title="Delete company"
-              className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-rose-400 active:bg-rose-950/40 rounded-lg transition-colors active:scale-95"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
 
@@ -299,22 +297,22 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
         )}
       </div>
 
-      {/* Bottom Action Footer */}
+      {/* Bottom Action Footer - Min 42px touch targets */}
       <div className="pt-3 border-t border-slate-800/80 flex items-center gap-2">
         {company.status !== 'applied' ? (
           <button
             onClick={() => onQuickStatusChange(company.id, 'applied')}
-            className="flex-1 py-2 px-3 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5"
+            className="flex-1 min-h-[42px] py-2 px-3 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 active:scale-[0.98] text-white shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5"
           >
-            <CheckCircle2 className="w-3.5 h-3.5" />
+            <CheckCircle2 className="w-4 h-4 text-white" />
             <span>Mark as Applied</span>
           </button>
         ) : (
           <button
             onClick={() => onEdit(company)}
-            className="flex-1 py-2 px-3 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all flex items-center justify-center gap-1.5"
+            className="flex-1 min-h-[42px] py-2 px-3 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-900 active:scale-[0.98] text-slate-200 border border-slate-700 transition-all flex items-center justify-center gap-1.5"
           >
-            <Edit3 className="w-3.5 h-3.5" />
+            <Edit3 className="w-4 h-4 text-indigo-400" />
             <span>Update Drive Details</span>
           </button>
         )}
@@ -322,7 +320,7 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
         {company.status !== 'not_applied' && (
           <button
             onClick={() => onQuickStatusChange(company.id, 'not_applied')}
-            className="py-2 px-3 text-xs font-medium rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 transition-all"
+            className="min-h-[42px] py-2 px-3 text-xs font-medium rounded-xl bg-rose-950/40 hover:bg-rose-900/60 active:scale-[0.98] text-rose-300 border border-rose-800/50 transition-all flex items-center justify-center"
             title="Mark Not Applied and set rejection reason"
           >
             Skip Company

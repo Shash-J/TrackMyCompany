@@ -30,6 +30,7 @@ import {
 } from './services/storage';
 import { Navbar } from './components/Navbar';
 import type { NavTab } from './components/Navbar';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { CompanyCard } from './components/CompanyCard';
 import { CompanyModal } from './components/CompanyModal';
 import { ProfileModal } from './components/ProfileModal';
@@ -264,216 +265,222 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#070A12] text-slate-100 flex flex-col font-sans antialiased">
       
-      {/* Top Navbar */}
-      <Navbar
-        currentTab={currentTab}
-        onSelectTab={(tab) => setCurrentTab(tab)}
-        profile={profile}
-        onOpenProfile={() => setIsProfileModalOpen(true)}
-        onOpenAddModal={() => openAddModalWithStatus('applied')}
-        onOpenImportExport={() => {
-          setImportExportInitialTab('export');
-          setIsImportExportModalOpen(true);
-        }}
-      />
-
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      {/* Mobile App Container Shell */}
+      <div className="w-full max-w-md mx-auto min-h-screen bg-[#0B0F19] flex flex-col relative shadow-2xl sm:border-x sm:border-slate-800/80">
         
-        {/* VIEW 1: MAIN DASHBOARD */}
-        {currentTab === 'dashboard' && (
-          <div className="space-y-6">
-            
-            {/* Dashboard Header Bar */}
-            <div className="pb-1">
-              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                Placement Hub
-              </h1>
-              <p className="text-xs text-slate-400">
-                Add and track campus companies from your WhatsApp announcements.
-              </p>
-            </div>
+        {/* Top Mobile App Bar */}
+        <Navbar
+          currentTab={currentTab}
+          onSelectTab={(tab) => setCurrentTab(tab)}
+          profile={profile}
+          onOpenProfile={() => setIsProfileModalOpen(true)}
+          onOpenAddModal={() => openAddModalWithStatus('applied')}
+          onOpenImportExport={() => {
+            setImportExportInitialTab('export');
+            setIsImportExportModalOpen(true);
+          }}
+        />
 
-            {/* SECTION: UPCOMING DRIVES OF APPLIED COMPANIES */}
-            {upcomingDrives.length > 0 && (
-              <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-5 shadow-lg shadow-black/20">
-                <div className="flex items-center justify-between mb-3.5">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-amber-400" />
-                    <h2 className="text-sm font-bold text-white tracking-tight uppercase tracking-wider text-[11px] text-amber-400">
-                      Upcoming Drives of Applied Companies ({upcomingDrives.length})
-                    </h2>
-                  </div>
-                  <span className="text-[11px] text-slate-400">
-                    Online assessment schedule
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {upcomingDrives.map((drive) => {
-                    const badge = getDaysRemainingBadge(drive.oaDate!);
-                    return (
-                      <div 
-                        key={drive.id}
-                        className="bg-[#0B0F19] border border-slate-800/90 rounded-xl p-3.5 flex flex-col justify-between gap-2.5 hover:border-indigo-500/40 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <h3 className="text-sm font-bold text-white">{drive.name}</h3>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md border ${badge.color}`}>
-                                {badge.text}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-slate-400 line-clamp-1">{drive.role} • <span className="text-indigo-300 font-mono font-semibold">{drive.ctc}</span></p>
-                          </div>
-                        </div>
-
-                        {/* Date & Shortlist Status Modifier */}
-                        <div className="pt-2 border-t border-slate-800/70 flex items-center justify-between text-xs">
-                          <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-amber-400" />
-                            {new Date(drive.oaDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                          </span>
-
-                          <div className="flex items-center gap-1">
-                            {drive.oaStatus === 'shortlisted' ? (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3" />
-                                Shortlisted
-                              </span>
-                            ) : drive.oaStatus === 'not_shortlisted' ? (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
-                                <XCircle className="w-3 h-3" />
-                                Not Shortlisted
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                                Pending
-                              </span>
-                            )}
-
-                            <button
-                              onClick={() => openEditModal(drive)}
-                              className="text-[10px] text-slate-400 hover:text-white px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700"
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* COMPANY MANAGEMENT: Minimal Controls & Filter Chips */}
-            <div className="bg-[#131B2E] border border-slate-800 p-3 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-md shadow-black/20">
+        {/* Main Content Area */}
+        <main className="flex-1 w-full px-3.5 pt-3.5 pb-28">
+          
+          {/* VIEW 1: MAIN DASHBOARD */}
+          {currentTab === 'dashboard' && (
+            <div className="space-y-4">
               
-              {/* Status Filter Chips: Applied by default as requested */}
-              <div className="flex items-center gap-1 bg-[#0B0F19] p-1 rounded-xl border border-slate-800/80 self-start">
-                <button
-                  onClick={() => setStatusFilter('applied')}
-                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-                    statusFilter === 'applied'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Applied ({stats.totalApplied})
-                </button>
-                <button
-                  onClick={() => setStatusFilter('all')}
-                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-                    statusFilter === 'all'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  All ({companies.length})
-                </button>
-                <button
-                  onClick={() => setStatusFilter('not_applied')}
-                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-                    statusFilter === 'not_applied'
-                      ? 'bg-rose-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Skipped ({stats.totalNotApplied})
-                </button>
+              {/* Dashboard Header Bar */}
+              <div className="pb-0.5">
+                <h1 className="text-xl font-bold text-white tracking-tight">
+                  Placement Hub
+                </h1>
+                <p className="text-[11px] text-slate-400">
+                  Track campus drives from your WhatsApp group
+                </p>
               </div>
 
-              {/* Search & Selectors */}
-              <div className="flex flex-1 md:max-w-md items-center gap-2">
-                <div className="relative flex-1">
+              {/* SECTION: UPCOMING DRIVES OF APPLIED COMPANIES */}
+              {upcomingDrives.length > 0 && (
+                <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-3.5 shadow-lg shadow-black/20">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                      <h2 className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                        Upcoming Drives ({upcomingDrives.length})
+                      </h2>
+                    </div>
+                    <span className="text-[10px] text-slate-400">
+                      OA Schedule
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    {upcomingDrives.map((drive) => {
+                      const badge = getDaysRemainingBadge(drive.oaDate!);
+                      return (
+                        <div 
+                          key={drive.id}
+                          className="bg-[#0B0F19] border border-slate-800/90 rounded-xl p-3 flex flex-col gap-2 hover:border-indigo-500/40 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <h3 className="text-sm font-bold text-white truncate">{drive.name}</h3>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border shrink-0 ${badge.color}`}>
+                                  {badge.text}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                                {drive.role} • <span className="text-indigo-300 font-mono font-semibold">{drive.ctc}</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Date & Shortlist Status Modifier */}
+                          <div className="pt-2 border-t border-slate-800/70 flex items-center justify-between text-xs">
+                            <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-amber-400" />
+                              {new Date(drive.oaDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </span>
+
+                            <div className="flex items-center gap-1.5">
+                              {drive.oaStatus === 'shortlisted' ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                                  <CheckCircle2 className="w-2.5 h-2.5" />
+                                  Shortlisted
+                                </span>
+                              ) : drive.oaStatus === 'not_shortlisted' ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
+                                  <XCircle className="w-2.5 h-2.5" />
+                                  Rejected
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                  Pending
+                                </span>
+                              )}
+
+                              <button
+                                onClick={() => openEditModal(drive)}
+                                className="text-[10px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 border border-slate-700 active:scale-95"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* COMPANY MANAGEMENT: Mobile Filter Toolbar */}
+              <div className="bg-[#131B2E] border border-slate-800 p-2.5 rounded-2xl space-y-2 shadow-md shadow-black/20">
+                
+                {/* Status Filter Chips Segmented Toggle */}
+                <div className="flex items-center gap-1 bg-[#0B0F19] p-1 rounded-xl border border-slate-800/80">
+                  <button
+                    onClick={() => setStatusFilter('applied')}
+                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg text-center transition-all ${
+                      statusFilter === 'applied'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Applied ({stats.totalApplied})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg text-center transition-all ${
+                      statusFilter === 'all'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    All ({companies.length})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('not_applied')}
+                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg text-center transition-all ${
+                      statusFilter === 'not_applied'
+                        ? 'bg-rose-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Skipped ({stats.totalNotApplied})
+                  </button>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative w-full">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search company, CTC, reason..."
-                    className="w-full pl-8 pr-3 py-1.5 bg-[#0B0F19] border border-slate-700/70 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
+                    className="w-full pl-8 pr-3 py-2 bg-[#0B0F19] border border-slate-700/70 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
                   />
                 </div>
 
-                <select
-                  value={tierFilter}
-                  onChange={(e) => setTierFilter(e.target.value)}
-                  className="px-2.5 py-1.5 bg-[#0B0F19] border border-slate-700/70 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="ALL">All Tiers</option>
-                  <option value="OPEN_DREAM">Open Dream (≥12 LPA)</option>
-                  <option value="DREAM">Dream (&lt;12 LPA)</option>
-                  <option value="MASS">Mass / Regular</option>
-                  <option value="INTERN_ONLY">Internship</option>
-                  <option value="OFF_CAMPUS">Off-Campus</option>
-                </select>
-
-                <div className="flex items-center gap-1 bg-[#0B0F19] border border-slate-700/70 rounded-xl px-2 py-0.5">
-                  <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                {/* Filter & Sort Row */}
+                <div className="flex items-center gap-1.5">
                   <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className="bg-transparent text-xs text-slate-300 focus:outline-none pr-1 py-1"
+                    value={tierFilter}
+                    onChange={(e) => setTierFilter(e.target.value)}
+                    className="flex-1 px-2.5 py-1.5 bg-[#0B0F19] border border-slate-700/70 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
                   >
-                    <option value="date_desc" className="bg-[#0B0F19]">Newest</option>
-                    <option value="name_asc" className="bg-[#0B0F19]">A - Z</option>
-                    <option value="oa_date" className="bg-[#0B0F19]">OA Date</option>
+                    <option value="ALL">All Tiers</option>
+                    <option value="OPEN_DREAM">Open Dream (≥12 LPA)</option>
+                    <option value="DREAM">Dream (&lt;12 LPA)</option>
+                    <option value="MASS">Mass / Regular</option>
+                    <option value="INTERN_ONLY">Internship</option>
+                    <option value="OFF_CAMPUS">Off-Campus</option>
                   </select>
+
+                  <div className="flex items-center gap-1 bg-[#0B0F19] border border-slate-700/70 rounded-xl px-2 py-0.5 shrink-0">
+                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as any)}
+                      className="bg-transparent text-xs text-slate-300 focus:outline-none pr-1 py-1"
+                    >
+                      <option value="date_desc" className="bg-[#0B0F19]">Newest</option>
+                      <option value="name_asc" className="bg-[#0B0F19]">A - Z</option>
+                      <option value="oa_date" className="bg-[#0B0F19]">OA Date</option>
+                    </select>
+                  </div>
+
+                  {(searchQuery || tierFilter !== 'ALL' || statusFilter !== 'applied') && (
+                    <button
+                      onClick={resetFilters}
+                      title="Reset filters"
+                      className="p-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 rounded-xl transition-colors shrink-0"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
 
-                {(searchQuery || tierFilter !== 'ALL' || statusFilter !== 'all') && (
-                  <button
-                    onClick={resetFilters}
-                    title="Reset filters"
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                  </button>
-                )}
               </div>
 
-            </div>
-
-            {/* Companies Grid */}
-            {filteredCompanies.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredCompanies.map((company) => (
-                  <CompanyCard
-                    key={company.id}
-                    company={company}
-                    onEdit={openEditModal}
-                    onDelete={handleDeleteCompany}
-                    onQuickStatusChange={handleQuickStatusChange}
-                    onUpdateOAStatus={handleUpdateOAStatus}
-                  />
-                ))}
-              </div>
-            ) : (
+              {/* Companies Feed (Single Column for Mobile) */}
+              {filteredCompanies.length > 0 ? (
+                <div className="space-y-3">
+                  {filteredCompanies.map((company) => (
+                    <CompanyCard
+                      key={company.id}
+                      company={company}
+                      onEdit={openEditModal}
+                      onDelete={handleDeleteCompany}
+                      onQuickStatusChange={handleQuickStatusChange}
+                      onUpdateOAStatus={handleUpdateOAStatus}
+                    />
+                  ))}
+                </div>
+              ) : (
               /* Clean Empty State */
               <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-10 text-center my-4">
                 {companies.length === 0 ? (
@@ -547,10 +554,27 @@ export const App: React.FC = () => {
           />
         )}
 
-      </main>
+        </main>
 
-      {/* Expandable Footer with Keywords */}
-      <Footer />
+        {/* Expandable Footer with Keywords */}
+        <Footer />
+
+        {/* Bottom Navigation Bar for Mobile */}
+        <MobileBottomNav
+          currentTab={currentTab}
+          onSelectTab={(tab) => setCurrentTab(tab)}
+          statusFilter={statusFilter}
+          onSelectStatusFilter={(status) => setStatusFilter(status)}
+          onOpenAddModal={() => openAddModalWithStatus(statusFilter === 'not_applied' ? 'not_applied' : 'applied')}
+          onOpenImportExport={() => {
+            setImportExportInitialTab('export');
+            setIsImportExportModalOpen(true);
+          }}
+          appliedCount={stats.totalApplied}
+          totalCount={stats.totalVisited}
+        />
+
+      </div>
 
       {/* Modals */}
       <ProfileModal
