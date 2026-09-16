@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Building2, Calendar, DollarSign, Check, Award, AlertCircle, Tag } from 'lucide-react';
-import type { Company, TierCategory, ApplicationStatus, RejectionReasonTag } from '../types';
-import { REJECTION_PRESET_TAGS } from '../services/storage';
+import { X, Building2, Calendar, DollarSign, Check, AlertCircle, Tag, CheckCircle2, XCircle } from 'lucide-react';
+import type { Company, TierCategory, ApplicationStatus, RejectionReasonTag, OARejectionReasonTag, OAShortlistStatus } from '../types';
+import { REJECTION_PRESET_TAGS, OA_REJECTION_PRESET_TAGS } from '../services/storage';
 
 interface CompanyModalProps {
   isOpen: boolean;
@@ -29,7 +29,9 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
 
   // When Applied
   const [oaDate, setOaDate] = useState('');
-  const [oaSelected, setOaSelected] = useState<boolean>(false);
+  const [oaStatusState, setOaStatusState] = useState<OAShortlistStatus>('shortlisted');
+  const [oaRejectionReasonTags, setOaRejectionReasonTags] = useState<OARejectionReasonTag[]>(['CGPA']);
+  const [oaCustomReasonNote, setOaCustomReasonNote] = useState('');
 
   // When Not Applied
   const [rejectionReasonTags, setRejectionReasonTags] = useState<RejectionReasonTag[]>(['Low CTC']);
@@ -48,7 +50,13 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setStatus(editCompany.status === 'not_applied' ? 'not_applied' : 'applied');
 
       setOaDate(editCompany.oaDate || editCompany.applicationDeadline || '');
-      setOaSelected(editCompany.oaStatus === 'shortlisted');
+      setOaStatusState(editCompany.oaStatus === 'not_shortlisted' ? 'not_shortlisted' : 'shortlisted');
+
+      const existingOATags: OARejectionReasonTag[] = editCompany.oaRejectionReasonTags?.length
+        ? editCompany.oaRejectionReasonTags
+        : (editCompany.oaRejectionReasonTag ? [editCompany.oaRejectionReasonTag] : ['CGPA']);
+      setOaRejectionReasonTags(existingOATags);
+      setOaCustomReasonNote(editCompany.oaCustomReasonNote || '');
 
       const existingTags: RejectionReasonTag[] = editCompany.rejectionReasonTags?.length 
         ? editCompany.rejectionReasonTags 
@@ -65,7 +73,10 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setNotes('');
       setStatus(defaultStatus === 'not_applied' ? 'not_applied' : 'applied');
       setOaDate('');
-      setOaSelected(false);
+      // By default infer writing OA
+      setOaStatusState('shortlisted');
+      setOaRejectionReasonTags(['CGPA']);
+      setOaCustomReasonNote('');
       setRejectionReasonTags(['Low CTC']);
       setCustomReasonNote('');
     }
@@ -76,6 +87,17 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
 
   const handleToggleTag = (tag: RejectionReasonTag) => {
     setRejectionReasonTags((prev) => {
+      if (prev.includes(tag)) {
+        const next = prev.filter((t) => t !== tag);
+        return next.length > 0 ? next : [tag];
+      } else {
+        return [...prev, tag];
+      }
+    });
+  };
+
+  const handleToggleOATag = (tag: OARejectionReasonTag) => {
+    setOaRejectionReasonTags((prev) => {
       if (prev.includes(tag)) {
         const next = prev.filter((t) => t !== tag);
         return next.length > 0 ? next : [tag];
@@ -110,7 +132,16 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
         formSubmittedDate: currentStatus === 'applied' ? (editCompany?.formSubmittedDate || new Date().toISOString()) : undefined,
         oaDate: oaDate ? oaDate : undefined,
         oaStatus: currentStatus === 'applied' 
-          ? (editCompany ? (oaSelected ? 'shortlisted' : 'not_shortlisted') : 'not_shortlisted') 
+          ? (editCompany ? oaStatusState : 'shortlisted') 
+          : undefined,
+        oaRejectionReasonTags: currentStatus === 'applied' && oaStatusState === 'not_shortlisted'
+          ? oaRejectionReasonTags
+          : undefined,
+        oaRejectionReasonTag: currentStatus === 'applied' && oaStatusState === 'not_shortlisted'
+          ? (oaRejectionReasonTags[0] || 'Other')
+          : undefined,
+        oaCustomReasonNote: currentStatus === 'applied' && oaStatusState === 'not_shortlisted' && oaCustomReasonNote.trim()
+          ? oaCustomReasonNote.trim()
           : undefined,
         // Not applied fields
         rejectionReasonTags: currentStatus === 'not_applied' ? rejectionReasonTags : undefined,
@@ -263,47 +294,85 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
 
           {/* DYNAMIC SECTION: IF EDITING AN APPLIED COMPANY */}
           {editCompany && status === 'applied' && (
-            <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-800/40 space-y-2.5 animate-fadeIn">
+            <div className="p-3.5 rounded-xl bg-indigo-950/20 border border-indigo-800/40 space-y-3 animate-fadeIn">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  Application Status
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-indigo-400" />
+                  OA Shortlist Status
                 </span>
-                <span className="text-[11px] text-emerald-400/90 font-medium">Applied</span>
+                <span className="text-[10px] text-slate-400">Online Assessment</span>
               </div>
 
-              {/* OA Milestone Status */}
-              <div className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-colors shrink-0 ${
-                    oaSelected
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      : 'bg-slate-800/60 text-slate-400 border-slate-700/60'
-                  }`}>
-                    <Award className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-xs font-semibold text-white block truncate">
-                      {oaSelected ? 'Shortlisted for OA ✨' : 'Awaiting Shortlist Results'}
-                    </span>
-                    <span className="text-[10px] text-slate-400 block truncate">
-                      {oaSelected ? 'Selected to take the test' : 'Not yet shortlisted'}
-                    </span>
-                  </div>
-                </div>
+              {/* Status Switcher (Writing OA vs Not Shortlisted for OA) */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOaStatusState('shortlisted')}
+                  className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    oaStatusState !== 'not_shortlisted'
+                      ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm'
+                      : 'bg-[#0B0F19] border-slate-700 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Writing OA</span>
+                </button>
 
                 <button
                   type="button"
-                  onClick={() => setOaSelected(!oaSelected)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                    oaSelected
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
-                      : 'bg-slate-800 text-slate-300 border border-slate-700 hover:text-white hover:bg-slate-700'
+                  onClick={() => setOaStatusState('not_shortlisted')}
+                  className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    oaStatusState === 'not_shortlisted'
+                      ? 'bg-rose-600 border-rose-500 text-white shadow-sm'
+                      : 'bg-[#0B0F19] border-slate-700 text-slate-400 hover:text-white'
                   }`}
                 >
-                  {oaSelected ? 'Shortlisted ✓' : 'Mark Selected'}
+                  <XCircle className="w-3.5 h-3.5" />
+                  <span>Not Shortlisted</span>
                 </button>
               </div>
+
+              {/* If Not Shortlisted, show Reason Selector */}
+              {oaStatusState === 'not_shortlisted' && (
+                <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-800/50 space-y-2.5 animate-fadeIn">
+                  <span className="text-[10px] font-semibold text-rose-300 block">
+                    Reason for not being shortlisted ({oaRejectionReasonTags.length} selected):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {OA_REJECTION_PRESET_TAGS.map((tag) => {
+                      const isSelected = oaRejectionReasonTags.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => handleToggleOATag(tag)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                            isSelected
+                              ? 'bg-rose-500/30 border-rose-500/70 text-rose-200 font-bold shadow-sm shadow-rose-500/20'
+                              : 'bg-[#0B0F19] border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                          }`}
+                        >
+                          <span className="text-[10px] font-bold">{isSelected ? '✓' : '+'}</span>
+                          <span>{tag}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-300 mb-1">
+                      Custom Reason / Details (classified as Others in stats)
+                    </label>
+                    <input
+                      type="text"
+                      value={oaCustomReasonNote}
+                      onChange={(e) => setOaCustomReasonNote(e.target.value)}
+                      placeholder="e.g. Resume screening cutoff, or college CGPA cutoff..."
+                      className="w-full px-3 py-1.5 bg-[#0B0F19] border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-rose-500"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

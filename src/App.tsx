@@ -13,7 +13,8 @@ import type {
   Company, 
   StudentProfile, 
   OAShortlistStatus, 
-  ApplicationStatus 
+  ApplicationStatus,
+  OARejectionReasonTag
 } from './types';
 import { 
   getCompanies, 
@@ -85,12 +86,12 @@ export const App: React.FC = () => {
   // Compute Statistics
   const stats = useMemo(() => calculateStatistics(companies), [companies]);
 
-  // Upcoming Drive: Immediate next coming company based on drive date
+  // Upcoming Drive: Immediate next coming company based on drive date (excludes not_shortlisted drives)
   const upcomingDrive = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const drives = companies
-      .filter((c) => c.status === 'applied' && !!c.oaDate)
+      .filter((c) => c.status === 'applied' && !!c.oaDate && c.oaStatus !== 'not_shortlisted')
       .sort((a, b) => new Date(a.oaDate!).getTime() - new Date(b.oaDate!).getTime());
 
     if (drives.length === 0) return null;
@@ -138,7 +139,7 @@ export const App: React.FC = () => {
         status: 'applied',
         formSubmitted: true,
         formSubmittedDate: new Date().toISOString(),
-        oaStatus: target.oaStatus || 'not_shortlisted',
+        oaStatus: target.oaStatus || 'shortlisted',
       });
       setCompanies(getCompanies());
     } else {
@@ -150,13 +151,21 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleUpdateOAStatus = (id: string, oaStatus: OAShortlistStatus) => {
+  const handleUpdateOAStatus = (
+    id: string, 
+    oaStatus: OAShortlistStatus,
+    oaRejectionReasonTags?: OARejectionReasonTag[],
+    oaCustomReasonNote?: string
+  ) => {
     const target = companies.find((c) => c.id === id);
     if (!target) return;
 
     updateCompany({
       ...target,
       oaStatus,
+      oaRejectionReasonTags: oaStatus === 'not_shortlisted' ? oaRejectionReasonTags : undefined,
+      oaRejectionReasonTag: oaStatus === 'not_shortlisted' ? (oaRejectionReasonTags?.[0] || 'Other') : undefined,
+      oaCustomReasonNote: oaStatus === 'not_shortlisted' ? oaCustomReasonNote : undefined,
     });
     setCompanies(getCompanies());
 
@@ -287,18 +296,21 @@ export const App: React.FC = () => {
           const matchName = c.name.toLowerCase().includes(q);
           const matchRole = (c.role || '').toLowerCase().includes(q);
           const matchCtc = (c.ctc || '').toLowerCase().includes(q);
-          const matchReason = (c.rejectionReasonTag || '').toLowerCase().includes(q);
+          const matchReason = (c.rejectionReasonTag || '').toLowerCase().includes(q) ||
+            (c.rejectionReasonTags || []).some((t) => t.toLowerCase().includes(q));
           const matchCustomReason = (c.customReasonNote || '').toLowerCase().includes(q);
+          const matchOAReason = (c.oaRejectionReasonTag || '').toLowerCase().includes(q) ||
+            (c.oaRejectionReasonTags || []).some((t) => t.toLowerCase().includes(q));
+          const matchOACustomReason = (c.oaCustomReasonNote || '').toLowerCase().includes(q);
           const matchNotes = (c.notes || '').toLowerCase().includes(q);
 
-          if (!matchName && !matchRole && !matchCtc && !matchReason && !matchCustomReason && !matchNotes) {
+          if (!matchName && !matchRole && !matchCtc && !matchReason && !matchCustomReason && !matchOAReason && !matchOACustomReason && !matchNotes) {
             return false;
           }
         }
 
         return true;
-      })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      });
   }, [companies, statusFilter, searchQuery]);
 
   const getDaysRemainingBadge = (dateStr: string) => {

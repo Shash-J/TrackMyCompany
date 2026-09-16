@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { Company, TierCategory, ApplicationStatus, RejectionReasonTag, PriorityLevel, OAShortlistStatus, StudentProfile } from '../types';
+import type { Company, TierCategory, ApplicationStatus, RejectionReasonTag, PriorityLevel, OAShortlistStatus, StudentProfile, OARejectionReasonTag } from '../types';
 
 export interface ImportResult {
   success: boolean;
@@ -22,7 +22,9 @@ export const exportCompaniesToExcel = (
     'CTC / Package': c.ctc || 'N/A',
     'Application Status': c.status === 'applied' ? 'Applied' : c.status === 'not_applied' ? 'Not Applied' : 'Undecided',
     'OA Drive Date': c.oaDate ? c.oaDate : '',
-    'OA Shortlist Status': c.oaStatus === 'shortlisted' ? 'Shortlisted' : c.oaStatus === 'not_shortlisted' ? 'Not Shortlisted' : c.oaStatus === 'pending' ? 'Pending' : '',
+    'OA Shortlist Status': c.oaStatus === 'not_shortlisted' ? 'Not Shortlisted' : (c.status === 'applied' ? 'Writing OA' : ''),
+    'OA Rejection Reason': c.oaRejectionReasonTags?.length ? c.oaRejectionReasonTags.join(', ') : (c.oaRejectionReasonTag || ''),
+    'OA Rejection Note': c.oaCustomReasonNote || '',
     'Priority': c.priority || 'Medium',
     'Rejection Reason Tag': c.rejectionReasonTags?.length ? c.rejectionReasonTags.join(', ') : (c.rejectionReasonTag || ''),
     'Rejection Custom Note': c.customReasonNote || '',
@@ -47,7 +49,9 @@ export const exportCompaniesToExcel = (
     { wch: 16 }, // CTC
     { wch: 18 }, // Application Status
     { wch: 15 }, // OA Drive Date
-    { wch: 18 }, // OA Shortlist Status
+    { wch: 20 }, // OA Shortlist Status
+    { wch: 22 }, // OA Rejection Reason
+    { wch: 26 }, // OA Rejection Note
     { wch: 10 }, // Priority
     { wch: 26 }, // Rejection Reason Tag
     { wch: 30 }, // Rejection Custom Note
@@ -139,7 +143,9 @@ export const exportCompaniesToCSV = (companies: Company[], filename: string = 'C
     'CTC': c.ctc || '',
     'Status': c.status,
     'OA Date': c.oaDate || '',
-    'OA Status': c.oaStatus || '',
+    'OA Status': c.oaStatus === 'not_shortlisted' ? 'Not Shortlisted' : (c.status === 'applied' ? 'Writing OA' : ''),
+    'OA Rejection Reason': c.oaRejectionReasonTags?.length ? c.oaRejectionReasonTags.join(', ') : (c.oaRejectionReasonTag || ''),
+    'OA Rejection Note': c.oaCustomReasonNote || '',
     'Priority': c.priority || '',
     'Rejection Reason': c.rejectionReasonTags?.length ? c.rejectionReasonTags.join(', ') : (c.rejectionReasonTag || ''),
     'Custom Reason Note': c.customReasonNote || '',
@@ -375,14 +381,45 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
 
           const customReasonNote = String(normalized['rejectioncustomnote'] || normalized['customreason'] || normalized['customnote'] || '');
 
-          // OA Status
-          let oaStatus: OAShortlistStatus = 'pending';
+          // OA Status (Default is shortlisted / writing OA when applied)
+          let oaStatus: OAShortlistStatus = 'shortlisted';
           const rawOAStatus = String(normalized['oastatus'] || normalized['oashortliststatus'] || '').toLowerCase();
-          if (rawOAStatus.includes('shortlist') && !rawOAStatus.includes('not')) {
-            oaStatus = 'shortlisted';
-          } else if (rawOAStatus.includes('not') || rawOAStatus.includes('rejected')) {
+          if (rawOAStatus.includes('not') || rawOAStatus.includes('rejected')) {
             oaStatus = 'not_shortlisted';
+          } else if (rawOAStatus.includes('shortlist') || rawOAStatus.includes('writing')) {
+            oaStatus = 'shortlisted';
+          } else if (status === 'applied') {
+            oaStatus = 'shortlisted';
           }
+
+          // OA Rejection Reasons (when not shortlisted for OA)
+          let oaRejectionReasonTag: OARejectionReasonTag | undefined = undefined;
+          let oaRejectionReasonTags: OARejectionReasonTag[] | undefined = undefined;
+          const rawOAReason = String(normalized['oarejectionreason'] || normalized['oarejectionreasontag'] || normalized['oareason'] || '');
+          if (rawOAReason) {
+            const parts = rawOAReason.split(/[,;/|]+/).map((s) => s.trim()).filter(Boolean);
+            const detectedOATags: OARejectionReasonTag[] = [];
+
+            parts.forEach((part) => {
+              const lower = part.toLowerCase();
+              if (lower.includes('cgpa') || lower.includes('cutoff') || lower.includes('criteria')) {
+                if (!detectedOATags.includes('CGPA')) detectedOATags.push('CGPA');
+              } else if (lower.includes('resume') || lower.includes('cv') || lower.includes('profile')) {
+                if (!detectedOATags.includes('Resume')) detectedOATags.push('Resume');
+              } else if (lower.includes('random') || lower.includes('unknown') || lower.includes('luck')) {
+                if (!detectedOATags.includes('Random / Unknown')) detectedOATags.push('Random / Unknown');
+              } else {
+                if (!detectedOATags.includes('Other')) detectedOATags.push('Other');
+              }
+            });
+
+            if (detectedOATags.length > 0) {
+              oaRejectionReasonTags = detectedOATags;
+              oaRejectionReasonTag = detectedOATags[0];
+            }
+          }
+
+          const oaCustomReasonNote = String(normalized['oarejectionnote'] || normalized['oacustomreasonnote'] || normalized['oanote'] || '');
 
           // OA Date
           const rawOADate = normalized['oadate'] || normalized['oadrivedate'] || normalized['drivedate'] || '';
@@ -430,6 +467,9 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
             priority,
             oaDate: oaDate || undefined,
             oaStatus: status === 'applied' ? oaStatus : undefined,
+            oaRejectionReasonTag: status === 'applied' && oaStatus === 'not_shortlisted' ? oaRejectionReasonTag : undefined,
+            oaRejectionReasonTags: status === 'applied' && oaStatus === 'not_shortlisted' ? oaRejectionReasonTags : undefined,
+            oaCustomReasonNote: status === 'applied' && oaStatus === 'not_shortlisted' && oaCustomReasonNote.trim() ? oaCustomReasonNote.trim() : undefined,
             formLink: formLink.trim() || undefined,
             notes: notes.trim() || undefined,
             createdAt,

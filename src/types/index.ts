@@ -19,6 +19,12 @@ export type RejectionReasonTag =
 
 export type OAShortlistStatus = 'pending' | 'shortlisted' | 'not_shortlisted';
 
+export type OARejectionReasonTag = 
+  | 'CGPA'
+  | 'Resume'
+  | 'Random / Unknown'
+  | 'Other';
+
 export type PriorityLevel = 'High' | 'Medium' | 'Low';
 
 export interface Company {
@@ -43,6 +49,9 @@ export interface Company {
   priority?: PriorityLevel;
   oaDate?: string;
   oaStatus?: OAShortlistStatus;
+  oaRejectionReasonTags?: OARejectionReasonTag[];
+  oaRejectionReasonTag?: OARejectionReasonTag;
+  oaCustomReasonNote?: string;
   notes?: string;
 
   createdAt: string;
@@ -79,8 +88,16 @@ export interface StatisticsData {
   internCount: number;
   offCampusCount: number;
 
-  // Rejection Reason Breakdown
+  // Rejection Reason Breakdown (Skipped)
   rejectionReasons: {
+    tag: string;
+    count: number;
+    percentage: number;
+    customNotes: string[];
+  }[];
+
+  // OA Rejection Reason Breakdown (Not Shortlisted for OA)
+  oaRejectionReasons: {
     tag: string;
     count: number;
     percentage: number;

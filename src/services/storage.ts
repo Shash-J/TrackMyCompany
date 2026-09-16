@@ -1,4 +1,4 @@
-import type { Company, StudentProfile, StatisticsData, RejectionReasonTag } from '../types';
+import type { Company, StudentProfile, StatisticsData, RejectionReasonTag, OARejectionReasonTag } from '../types';
 
 const STORAGE_KEY_COMPANIES = 'track_my_company_companies_v1';
 const STORAGE_KEY_PROFILE = 'track_my_company_profile_v1';
@@ -11,6 +11,13 @@ export const REJECTION_PRESET_TAGS: RejectionReasonTag[] = [
   'CGPA / Branch Ineligible',
   'Focusing on Other Companies',
   'PBC',
+  'Other'
+];
+
+export const OA_REJECTION_PRESET_TAGS: OARejectionReasonTag[] = [
+  'CGPA',
+  'Resume',
+  'Random / Unknown',
   'Other'
 ];
 
@@ -98,9 +105,10 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
   // OA stats
   const oaScheduledList = appliedList.filter((c) => !!c.oaDate);
   const totalOAScheduled = oaScheduledList.length;
-  const oaShortlistedCount = appliedList.filter((c) => c.oaStatus === 'shortlisted').length;
-  const oaNotShortlistedCount = appliedList.filter((c) => c.oaStatus === 'not_shortlisted').length;
-  const oaPendingCount = appliedList.filter((c) => c.oaStatus === 'pending' || !c.oaStatus).length;
+  const oaNotShortlistedList = appliedList.filter((c) => c.oaStatus === 'not_shortlisted');
+  const oaNotShortlistedCount = oaNotShortlistedList.length;
+  const oaShortlistedCount = Math.max(0, totalApplied - oaNotShortlistedCount);
+  const oaPendingCount = 0;
   const oaShortlistConversionRate = totalApplied > 0 ? Math.round((oaShortlistedCount / totalApplied) * 100) : 0;
 
   // Tier counts
@@ -110,7 +118,7 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
   const internCount = companies.filter((c) => c.tier === 'INTERN_ONLY').length;
   const offCampusCount = companies.filter((c) => c.tier === 'OFF_CAMPUS').length;
 
-  // Group rejection reasons
+  // Group rejection reasons (Skipped)
   const reasonMap: { [tag: string]: { count: number; customNotes: string[] } } = {};
   
   // Seed all preset tags
@@ -146,6 +154,52 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
     }))
     .sort((a, b) => b.count - a.count);
 
+  // Group OA rejection reasons (Applied but not shortlisted to write OA)
+  const oaReasonMap: { [tag: string]: { count: number; customNotes: string[] } } = {};
+  OA_REJECTION_PRESET_TAGS.forEach((tag) => {
+    oaReasonMap[tag] = { count: 0, customNotes: [] };
+  });
+
+  oaNotShortlistedList.forEach((company) => {
+    const rawTags = company.oaRejectionReasonTags?.length
+      ? company.oaRejectionReasonTags
+      : (company.oaRejectionReasonTag ? [company.oaRejectionReasonTag] : []);
+
+    if (rawTags.length === 0) {
+      // If no tag is explicitly selected, group under 'Other'
+      oaReasonMap['Other'].count += 1;
+      if (company.oaCustomReasonNote && company.oaCustomReasonNote.trim()) {
+        if (!oaReasonMap['Other'].customNotes.includes(company.oaCustomReasonNote.trim())) {
+          oaReasonMap['Other'].customNotes.push(company.oaCustomReasonNote.trim());
+        }
+      }
+    } else {
+      rawTags.forEach((tag) => {
+        const mappedTag = OA_REJECTION_PRESET_TAGS.includes(tag) ? tag : 'Other';
+        if (!oaReasonMap[mappedTag]) {
+          oaReasonMap[mappedTag] = { count: 0, customNotes: [] };
+        }
+        oaReasonMap[mappedTag].count += 1;
+        if (company.oaCustomReasonNote && company.oaCustomReasonNote.trim()) {
+          if (!oaReasonMap[mappedTag].customNotes.includes(company.oaCustomReasonNote.trim())) {
+            oaReasonMap[mappedTag].customNotes.push(company.oaCustomReasonNote.trim());
+          }
+        }
+      });
+    }
+  });
+
+  const totalOARejected = oaNotShortlistedList.length;
+  const oaRejectionReasons = Object.entries(oaReasonMap)
+    .filter(([_, data]) => data.count > 0)
+    .map(([tag, data]) => ({
+      tag,
+      count: data.count,
+      percentage: totalOARejected > 0 ? Math.round((data.count / totalOARejected) * 100) : 0,
+      customNotes: data.customNotes,
+    }))
+    .sort((a, b) => b.count - a.count);
+
   return {
     totalVisited,
     totalApplied,
@@ -164,6 +218,7 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
     internCount,
     offCampusCount,
     rejectionReasons,
+    oaRejectionReasons,
   };
 };
 

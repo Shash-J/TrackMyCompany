@@ -6,21 +6,25 @@ import {
   Trash2, 
   CheckCircle2, 
   XCircle, 
-  Award, 
   ChevronDown, 
-  ChevronUp,
-  Tag,
-  Sparkles,
-  GripVertical
+  ChevronUp, 
+  Tag, 
+  GripVertical 
 } from 'lucide-react';
-import type { Company, OAShortlistStatus } from '../types';
+import type { Company, OAShortlistStatus, OARejectionReasonTag } from '../types';
+import { OA_REJECTION_PRESET_TAGS } from '../services/storage';
 
 interface CompanyCardProps {
   company: Company;
   onEdit: (company: Company) => void;
   onDelete: (id: string) => void;
   onQuickStatusChange: (id: string, status: 'applied' | 'not_applied') => void;
-  onUpdateOAStatus: (id: string, oaStatus: OAShortlistStatus) => void;
+  onUpdateOAStatus: (
+    id: string, 
+    oaStatus: OAShortlistStatus,
+    oaRejectionReasonTags?: OARejectionReasonTag[],
+    oaCustomReasonNote?: string
+  ) => void;
   // Drag and drop reordering props
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent, id: string) => void;
@@ -50,10 +54,50 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
 
   const isApplied = company.status === 'applied';
-  const isOASelected = company.oaStatus === 'shortlisted';
+  const isNotShortlistedForOA = company.oaStatus === 'not_shortlisted';
   const rejectionTags = company.rejectionReasonTags?.length 
     ? company.rejectionReasonTags 
     : (company.rejectionReasonTag ? [company.rejectionReasonTag] : []);
+
+  const oaRejectionTags = company.oaRejectionReasonTags?.length
+    ? company.oaRejectionReasonTags
+    : (company.oaRejectionReasonTag ? [company.oaRejectionReasonTag] : ['Other']);
+
+  const [isMarkingNotShortlisted, setIsMarkingNotShortlisted] = useState(false);
+  const [selectedOATags, setSelectedOATags] = useState<OARejectionReasonTag[]>(
+    company.oaRejectionReasonTags?.length
+      ? company.oaRejectionReasonTags
+      : (company.oaRejectionReasonTag ? [company.oaRejectionReasonTag] : ['CGPA'])
+  );
+  const [customOANote, setCustomOANote] = useState(company.oaCustomReasonNote || '');
+
+  const handleToggleOATag = (tag: OARejectionReasonTag) => {
+    setSelectedOATags((prev) => {
+      if (prev.includes(tag)) {
+        const next = prev.filter((t) => t !== tag);
+        return next.length > 0 ? next : [tag];
+      } else {
+        return [...prev, tag];
+      }
+    });
+  };
+
+  const handleConfirmNotShortlisted = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onUpdateOAStatus(
+      company.id,
+      'not_shortlisted',
+      selectedOATags,
+      customOANote.trim() || undefined
+    );
+    setIsMarkingNotShortlisted(false);
+  };
+
+  const handleUndoNotShortlisted = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onUpdateOAStatus(company.id, 'shortlisted', undefined, undefined);
+    setIsMarkingNotShortlisted(false);
+  };
 
   return (
     <div 
@@ -176,12 +220,201 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
             )}
           </div>
 
-          {/* DYNAMIC: APPLIED (OA STATUS MILESTONE) */}
+          {/* DYNAMIC: APPLIED (OA STATUS & SHORTLIST REASONS) */}
           {isApplied && (
             <div>
-              {isOASelected ? (
-                /* State 1: Shortlisted Milestone Achieved */
-                <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-between gap-2">
+              {isNotShortlistedForOA ? (
+                /* State: Applied but Not Shortlisted to write OA */
+                <div className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-800/40 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                        <XCircle className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-rose-300">
+                            Not Shortlisted for OA ✕
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-rose-400/80 block truncate">
+                          Applied, but not shortlisted to write OA
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 self-end sm:self-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsMarkingNotShortlisted(!isMarkingNotShortlisted);
+                        }}
+                        className="text-[10px] font-semibold text-slate-300 hover:text-white px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 transition-colors shrink-0 cursor-pointer"
+                      >
+                        {isMarkingNotShortlisted ? 'Close' : 'Edit Reason'}
+                      </button>
+                      <button
+                        onClick={handleUndoNotShortlisted}
+                        className="text-[10px] font-semibold text-emerald-300 hover:text-emerald-200 px-2.5 py-1 rounded-lg bg-emerald-950/60 border border-emerald-700/50 hover:bg-emerald-900/60 transition-colors shrink-0 cursor-pointer"
+                        title="Mark as Writing OA"
+                      >
+                        Undo (Writing OA)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Reasons Display */}
+                  {!isMarkingNotShortlisted && (
+                    <div className="pt-1.5 border-t border-rose-900/40 flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400">Reason:</span>
+                      {oaRejectionTags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1"
+                        >
+                          <Tag className="w-2.5 h-2.5" />
+                          <span>{tag}</span>
+                        </span>
+                      ))}
+                      {company.oaCustomReasonNote && (
+                        <span className="text-[10px] text-slate-300 italic block w-full mt-0.5">
+                          "{company.oaCustomReasonNote}"
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Inline Reason Tag Selector Form (when editing) */}
+                  {isMarkingNotShortlisted && (
+                    <div className="pt-2 border-t border-rose-900/50 space-y-2.5 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+                      <div>
+                        <span className="text-[10px] font-semibold text-slate-300 block mb-1">
+                          Select reason for not being shortlisted:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {OA_REJECTION_PRESET_TAGS.map((tag) => {
+                            const isSelected = selectedOATags.includes(tag);
+                            return (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleToggleOATag(tag)}
+                                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                                  isSelected
+                                    ? 'bg-rose-500/30 border-rose-500/70 text-rose-200 font-bold shadow-sm shadow-rose-500/20'
+                                    : 'bg-[#0B0F19] border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                                }`}
+                              >
+                                <span className="text-[10px] font-bold">{isSelected ? '✓' : '+'}</span>
+                                <span>{tag}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <input
+                          type="text"
+                          value={customOANote}
+                          onChange={(e) => setCustomOANote(e.target.value)}
+                          placeholder="Custom reason note (e.g. Cutoff was 8.5 CGPA, classified under Others)..."
+                          className="w-full px-3 py-1.5 bg-[#0B0F19] border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-rose-500"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsMarkingNotShortlisted(false)}
+                          className="px-2.5 py-1 text-xs text-slate-400 hover:text-white"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleConfirmNotShortlisted}
+                          className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm shadow-rose-600/30"
+                        >
+                          Save Reason
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : isMarkingNotShortlisted ? (
+                /* Inline Reason Tag Selector Form (when transitioning from Writing OA to Not Shortlisted) */
+                <div className="p-3.5 rounded-xl bg-rose-950/20 border border-rose-800/40 space-y-2.5 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+                      <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                      Mark as Not Shortlisted for OA
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsMarkingNotShortlisted(false)}
+                      className="text-[10px] text-slate-400 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-semibold text-slate-300 block mb-1">
+                      Reason tags (select all that apply):
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {OA_REJECTION_PRESET_TAGS.map((tag) => {
+                        const isSelected = selectedOATags.includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => handleToggleOATag(tag)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                              isSelected
+                                ? 'bg-rose-500/30 border-rose-500/70 text-rose-200 font-bold shadow-sm shadow-rose-500/20'
+                              : 'bg-[#0B0F19] border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                            }`}
+                          >
+                            <span className="text-[10px] font-bold">{isSelected ? '✓' : '+'}</span>
+                            <span>{tag}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <input
+                      type="text"
+                      value={customOANote}
+                      onChange={(e) => setCustomOANote(e.target.value)}
+                      placeholder="Custom reason note (e.g. Cutoff was 8.5 CGPA, classified under Others)..."
+                      className="w-full px-3 py-1.5 bg-[#0B0F19] border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-rose-500"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsMarkingNotShortlisted(false)}
+                      className="px-2.5 py-1 text-xs text-slate-400 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmNotShortlisted}
+                      className="px-3.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold shadow-sm shadow-rose-600/30"
+                    >
+                      Confirm Not Shortlisted ✕
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Default State: Writing OA (Scheduled) */
+                <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -189,14 +422,14 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-bold text-emerald-300">
-                          Shortlisted for OA ✨
+                          Writing OA ✓
                         </span>
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                          Selected
+                          Scheduled
                         </span>
                       </div>
                       <span className="text-[10px] text-emerald-400/80 block truncate">
-                        Eligible to take the Online Assessment
+                        Scheduled to write the Online Assessment
                       </span>
                     </div>
                   </div>
@@ -204,36 +437,12 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onUpdateOAStatus(company.id, 'not_shortlisted');
+                      setIsMarkingNotShortlisted(true);
                     }}
-                    className="text-[10px] text-slate-400 hover:text-rose-400 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 hover:border-rose-900/60 transition-colors shrink-0 cursor-pointer"
-                    title="Undo shortlist"
+                    className="w-full sm:w-auto py-1.5 px-3 bg-slate-900 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-700/60 font-medium text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    Undo
-                  </button>
-                </div>
-              ) : (
-                /* State 2: Awaiting OA Results / Action to Mark as Selected */
-                <div className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-                      <Award className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-white block">OA Status</span>
-                      <span className="text-[10px] text-slate-400 block">Applied • Awaiting shortlist results</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onUpdateOAStatus(company.id, 'shortlisted');
-                    }}
-                    className="w-full sm:w-auto py-1.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Mark as OA Selected 🎉</span>
+                    <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Mark as Not Shortlisted</span>
                   </button>
                 </div>
               )}

@@ -186,20 +186,49 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
       };
     });
 
-  // 4. OA Selection Breakdown Data (Applied companies: OA Selected vs Not Selected)
-  const notSelectedCount = Math.max(0, stats.totalApplied - stats.oaShortlistedCount);
+  // 4. OA Selection Breakdown Data (Applied companies: Writing OA vs Not Shortlisted for OA)
   const oaChartItems: PieChartItem[] = [
     {
-      label: 'OA Selected',
+      label: 'Writing OA',
       value: stats.oaShortlistedCount,
       color: '#10B981', // Emerald
     },
     {
-      label: 'Awaiting / Not Selected',
-      value: notSelectedCount,
-      color: '#F59E0B', // Amber
+      label: 'Not Shortlisted for OA',
+      value: stats.oaNotShortlistedCount,
+      color: '#F43F5E', // Rose
     },
   ];
+
+  // 5. Reasons for Not Shortlisted for OA
+  const OA_TAG_COLORS: Record<string, string> = {
+    'CGPA': '#F97316',            // Orange
+    'Resume': '#3B82F6',          // Blue
+    'Random / Unknown': '#A855F7',// Purple
+    'Other': '#64748B',           // Slate
+  };
+
+  const oaReasonPieItems: PieChartItem[] = (stats.oaRejectionReasons || []).map((r) => ({
+    label: r.tag,
+    value: r.count,
+    color: OA_TAG_COLORS[r.tag] || '#64748B',
+  }));
+
+  const oaTopicStats = (stats.oaRejectionReasons || []).map((r) => ({
+    ...r,
+    color: OA_TAG_COLORS[r.tag] || '#64748B',
+  }));
+
+  const specificOANotes = companies
+    .filter((c) => c.status === 'applied' && c.oaStatus === 'not_shortlisted' && !!c.oaCustomReasonNote?.trim())
+    .map((c) => ({
+      id: c.id,
+      companyName: c.name,
+      tags: c.oaRejectionReasonTags?.length
+        ? c.oaRejectionReasonTags
+        : (c.oaRejectionReasonTag ? [c.oaRejectionReasonTag] : ['Other']),
+      note: c.oaCustomReasonNote!.trim(),
+    }));
 
   return (
     <div className="space-y-5 animate-fadeIn pb-6">
@@ -334,14 +363,94 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
           )}
         </div>
 
-        {/* PIE 4: OA SHORTLIST & EVALUATION FUNNEL */}
-        <PieChart
-          title="OA Selected Status (Applied Drives)"
-          items={oaChartItems}
-          centerLabel={`${stats.totalApplied}`}
-          centerSublabel="Applied"
-          emptyMessage="No applied companies yet"
-        />
+        {/* PIE 4 & 5: OA STATUS & REASONS FOR NOT SHORTLISTED */}
+        <div className="space-y-3">
+          <PieChart
+            title="OA Shortlist Status (Applied Drives)"
+            items={oaChartItems}
+            centerLabel={`${stats.totalApplied}`}
+            centerSublabel="Applied"
+            emptyMessage="No applied companies yet"
+          />
+
+          {/* PIE 5: REASONS FOR NOT BEING SHORTLISTED FOR OA */}
+          {stats.oaNotShortlistedCount > 0 && (
+            <div className="space-y-3 animate-fadeIn">
+              <PieChart
+                title="Reasons for Not Shortlisted for OA"
+                items={oaReasonPieItems}
+                centerLabel={`${stats.oaNotShortlistedCount}`}
+                centerSublabel="Filtered Out"
+                emptyMessage="No reasons recorded yet"
+              />
+
+              {/* Line-by-Line OA Reasons Breakdown */}
+              {oaTopicStats.length > 0 && (
+                <div className="p-3.5 bg-[#131B2E] border border-slate-800 rounded-xl space-y-2">
+                  <span className="text-[11px] font-semibold text-slate-300 block">
+                    OA Rejection Reasons Breakdown (Line-by-Line %):
+                  </span>
+                  <div className="space-y-2">
+                    {oaTopicStats.map((topic) => (
+                      <div key={topic.tag} className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                            <span
+                              className="w-2 h-2 rounded-full inline-block shrink-0"
+                              style={{ backgroundColor: topic.color }}
+                            />
+                            <span>{topic.tag}</span>
+                          </span>
+                          <span className="font-mono text-slate-400 font-semibold">
+                            {topic.count} {topic.count === 1 ? 'co' : 'cos'} • {topic.percentage}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-[#0B0F19] h-1.5 rounded-full overflow-hidden border border-slate-800">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${topic.percentage}%`,
+                              backgroundColor: topic.color,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Custom OA Rejection Notes */}
+              {specificOANotes.length > 0 && (
+                <div className="p-3.5 bg-[#131B2E] border border-slate-800 rounded-xl">
+                  <span className="text-[11px] font-semibold text-slate-300 block mb-2">
+                    Specific Notes (Classified as Others):
+                  </span>
+                  <div className="flex flex-col gap-1.5">
+                    {specificOANotes.map((item) => (
+                      <div
+                        key={item.id}
+                        className="text-[11px] text-slate-300 bg-[#0B0F19] p-2 rounded-lg border border-slate-800 flex flex-col gap-1"
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold text-white text-xs">{item.companyName}</span>
+                          <div className="flex flex-wrap gap-1">
+                            {item.tags.map((t) => (
+                              <span key={t} className="text-[9px] font-medium text-rose-300 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <span className="italic text-slate-300 break-words">"{item.note}"</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
       </div>
 
@@ -453,14 +562,36 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
                       </span>
                     )}
 
-                    {company.oaStatus === 'shortlisted' && (
-                      <span className="px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                        ✨ Shortlisted
+                    {company.status === 'applied' && company.oaStatus === 'not_shortlisted' && (
+                      <span className="px-2 py-0.5 rounded-full font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
+                        <XCircle className="w-2.5 h-2.5" />
+                        Not Shortlisted for OA
+                      </span>
+                    )}
+
+                    {company.status === 'applied' && company.oaStatus !== 'not_shortlisted' && (
+                      <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        Writing OA
                       </span>
                     )}
                   </div>
 
                   {/* Notes / Reason note */}
+                  {company.status === 'applied' && company.oaStatus === 'not_shortlisted' && company.oaRejectionReasonTags && company.oaRejectionReasonTags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {company.oaRejectionReasonTags.map((t) => (
+                        <span key={t} className="text-[9px] font-medium text-rose-300 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {company.oaCustomReasonNote && (
+                    <p className="text-[10px] text-slate-400 bg-[#131B2E] p-2 rounded-lg border border-slate-800/80 italic">
+                      "{company.oaCustomReasonNote}"
+                    </p>
+                  )}
                   {company.customReasonNote && (
                     <p className="text-[10px] text-slate-400 bg-[#131B2E] p-2 rounded-lg border border-slate-800/80 italic">
                       "{company.customReasonNote}"

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Clock, CheckCircle2, XCircle, Plus } from 'lucide-react';
+import { Calendar, CheckCircle2, XCircle, Plus } from 'lucide-react';
 import type { Company, OAShortlistStatus } from '../types';
 
 interface UpcomingOAsProps {
@@ -132,20 +132,15 @@ export const UpcomingOAs: React.FC<UpcomingOAsProps> = ({
                 <div className="w-full sm:w-auto flex flex-col sm:items-end gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400">Status:</span>
-                    {company.oaStatus === 'shortlisted' ? (
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Shortlisted for OA
-                      </span>
-                    ) : company.oaStatus === 'not_shortlisted' ? (
+                    {company.oaStatus === 'not_shortlisted' ? (
                       <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
                         <XCircle className="w-3.5 h-3.5" />
-                        Not Shortlisted
+                        Not Shortlisted for OA
                       </span>
                     ) : (
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        Pending Shortlist
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Writing OA
                       </span>
                     )}
                   </div>
@@ -154,12 +149,12 @@ export const UpcomingOAs: React.FC<UpcomingOAsProps> = ({
                     <button
                       onClick={() => onUpdateOAStatus(company.id, 'shortlisted')}
                       className={`px-2.5 py-1 rounded-lg border text-xs font-medium transition-all ${
-                        company.oaStatus === 'shortlisted'
+                        company.oaStatus !== 'not_shortlisted'
                           ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
                           : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
                       }`}
                     >
-                      Shortlisted
+                      Writing OA
                     </button>
                     <button
                       onClick={() => onUpdateOAStatus(company.id, 'not_shortlisted')}
@@ -169,7 +164,7 @@ export const UpcomingOAs: React.FC<UpcomingOAsProps> = ({
                           : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
                       }`}
                     >
-                      Rejected
+                      Not Shortlisted
                     </button>
                     <button
                       onClick={() => onEditCompany(company)}
