@@ -9,7 +9,8 @@ import {
   Award, 
   ChevronDown, 
   ChevronUp,
-  Tag
+  Tag,
+  Sparkles
 } from 'lucide-react';
 import type { Company, OAShortlistStatus } from '../types';
 
@@ -131,43 +132,67 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
             )}
           </div>
 
-          {/* DYNAMIC: APPLIED (OA SELECTED TOGGLE SWITCH) */}
+          {/* DYNAMIC: APPLIED (OA STATUS MILESTONE) */}
           {isApplied && (
-            <div 
-              onClick={(e) => {
-                e.stopPropagation();
-                onUpdateOAStatus(company.id, isOASelected ? 'not_shortlisted' : 'shortlisted');
-              }}
-              className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-700 transition-colors select-none"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-colors ${
-                  isOASelected
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                    : 'bg-slate-800/60 text-slate-400 border-slate-700/60'
-                }`}>
-                  <Award className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-white block">OA Selected</span>
-                  <span className="text-[10px] text-slate-400 block">
-                    {isOASelected ? 'Selected for Online Assessment ✨' : 'Not shortlisted'}
-                  </span>
-                </div>
-              </div>
+            <div>
+              {isOASelected ? (
+                /* State 1: Shortlisted Milestone Achieved */
+                <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-emerald-300">
+                          Shortlisted for OA ✨
+                        </span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          Selected
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400/80 block truncate">
+                        Eligible to take the Online Assessment
+                      </span>
+                    </div>
+                  </div>
 
-              {/* Toggle Switch */}
-              <div
-                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                  isOASelected ? 'bg-emerald-500' : 'bg-slate-700'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                    isOASelected ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateOAStatus(company.id, 'not_shortlisted');
+                    }}
+                    className="text-[10px] text-slate-400 hover:text-rose-400 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 hover:border-rose-900/60 transition-colors shrink-0 cursor-pointer"
+                    title="Undo shortlist"
+                  >
+                    Undo
+                  </button>
+                </div>
+              ) : (
+                /* State 2: Awaiting OA Results / Action to Mark as Selected */
+                <div className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                      <Award className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">OA Status</span>
+                      <span className="text-[10px] text-slate-400 block">Applied • Awaiting shortlist results</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateOAStatus(company.id, 'shortlisted');
+                    }}
+                    className="w-full sm:w-auto py-1.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Mark as OA Selected 🎉</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

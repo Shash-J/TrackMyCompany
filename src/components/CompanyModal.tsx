@@ -95,7 +95,9 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
         formSubmitted: currentStatus === 'applied' ? true : undefined,
         formSubmittedDate: currentStatus === 'applied' ? (editCompany?.formSubmittedDate || new Date().toISOString()) : undefined,
         oaDate: oaDate ? oaDate : undefined,
-        oaStatus: currentStatus === 'applied' ? (oaSelected ? 'shortlisted' : 'not_shortlisted') : undefined,
+        oaStatus: currentStatus === 'applied' 
+          ? (editCompany ? (oaSelected ? 'shortlisted' : 'not_shortlisted') : 'not_shortlisted') 
+          : undefined,
         // Not applied fields
         rejectionReasonTag: currentStatus === 'not_applied' ? rejectionReasonTag : undefined,
         customReasonNote: currentStatus === 'not_applied' && customReasonNote.trim() ? customReasonNote.trim() : undefined,
@@ -244,9 +246,9 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
             </div>
           </div>
 
-          {/* DYNAMIC SECTION: IF APPLIED */}
-          {status === 'applied' && (
-            <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-800/40 space-y-3 animate-fadeIn">
+          {/* DYNAMIC SECTION: IF EDITING AN APPLIED COMPANY */}
+          {editCompany && status === 'applied' && (
+            <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-800/40 space-y-2.5 animate-fadeIn">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -255,39 +257,37 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                 <span className="text-[11px] text-emerald-400/90 font-medium">Applied</span>
               </div>
 
-              {/* OA Selected Toggle Switch */}
-              <div 
-                onClick={() => setOaSelected(!oaSelected)}
-                className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-700 transition-colors select-none"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-colors ${
+              {/* OA Milestone Status */}
+              <div className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-colors shrink-0 ${
                     oaSelected
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                       : 'bg-slate-800/60 text-slate-400 border-slate-700/60'
                   }`}>
                     <Award className="w-4 h-4" />
                   </div>
-                  <div>
-                    <span className="text-xs font-semibold text-white block">OA Selected</span>
-                    <span className="text-[10px] text-slate-400 block">
-                      {oaSelected ? 'Selected for Online Assessment ✨' : 'Not shortlisted'}
+                  <div className="min-w-0">
+                    <span className="text-xs font-semibold text-white block truncate">
+                      {oaSelected ? 'Shortlisted for OA ✨' : 'Awaiting Shortlist Results'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block truncate">
+                      {oaSelected ? 'Selected to take the test' : 'Not yet shortlisted'}
                     </span>
                   </div>
                 </div>
 
-                {/* Toggle Switch */}
-                <div
-                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    oaSelected ? 'bg-emerald-500' : 'bg-slate-700'
+                <button
+                  type="button"
+                  onClick={() => setOaSelected(!oaSelected)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                    oaSelected
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                      : 'bg-slate-800 text-slate-300 border border-slate-700 hover:text-white hover:bg-slate-700'
                   }`}
                 >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                      oaSelected ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </div>
+                  {oaSelected ? 'Shortlisted ✓' : 'Mark Selected'}
+                </button>
               </div>
             </div>
           )}
