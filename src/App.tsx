@@ -137,8 +137,6 @@ export const App: React.FC = () => {
       updateCompany({
         ...target,
         status: 'applied',
-        formSubmitted: true,
-        formSubmittedDate: new Date().toISOString(),
         oaStatus: target.oaStatus || 'shortlisted',
       });
       setCompanies(getCompanies());
@@ -164,7 +162,6 @@ export const App: React.FC = () => {
       ...target,
       oaStatus,
       oaRejectionReasonTags: oaStatus === 'not_shortlisted' ? oaRejectionReasonTags : undefined,
-      oaRejectionReasonTag: oaStatus === 'not_shortlisted' ? (oaRejectionReasonTags?.[0] || 'Other') : undefined,
       oaCustomReasonNote: oaStatus === 'not_shortlisted' ? oaCustomReasonNote : undefined,
     });
     setCompanies(getCompanies());
@@ -296,11 +293,9 @@ export const App: React.FC = () => {
           const matchName = c.name.toLowerCase().includes(q);
           const matchRole = (c.role || '').toLowerCase().includes(q);
           const matchCtc = (c.ctc || '').toLowerCase().includes(q);
-          const matchReason = (c.rejectionReasonTag || '').toLowerCase().includes(q) ||
-            (c.rejectionReasonTags || []).some((t) => t.toLowerCase().includes(q));
+          const matchReason = (c.rejectionReasonTags || []).some((t) => t.toLowerCase().includes(q));
           const matchCustomReason = (c.customReasonNote || '').toLowerCase().includes(q);
-          const matchOAReason = (c.oaRejectionReasonTag || '').toLowerCase().includes(q) ||
-            (c.oaRejectionReasonTags || []).some((t) => t.toLowerCase().includes(q));
+          const matchOAReason = (c.oaRejectionReasonTags || []).some((t) => t.toLowerCase().includes(q));
           const matchOACustomReason = (c.oaCustomReasonNote || '').toLowerCase().includes(q);
           const matchNotes = (c.notes || '').toLowerCase().includes(q);
 

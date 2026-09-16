@@ -25,8 +25,6 @@ export type OARejectionReasonTag =
   | 'Random / Unknown'
   | 'Other';
 
-export type PriorityLevel = 'High' | 'Medium' | 'Low';
-
 export interface Company {
   id: string;
   name: string;
@@ -35,23 +33,18 @@ export interface Company {
   ctc: string;
   applicationDeadline?: string;
   formLink?: string;
-  businessModel?: string; // e.g. FinTech, Enterprise Software, E-Commerce, EdTech
   status: ApplicationStatus;
   
-  // Fields when status === 'not_applied'
-  rejectionReasonTag?: RejectionReasonTag;
+  // Fields when status === 'not_applied' (Skipped)
   rejectionReasonTags?: RejectionReasonTag[];
   customReasonNote?: string;
   
   // Fields when status === 'applied'
-  formSubmitted?: boolean;
-  formSubmittedDate?: string;
-  priority?: PriorityLevel;
   oaDate?: string;
   oaStatus?: OAShortlistStatus;
   oaRejectionReasonTags?: OARejectionReasonTag[];
-  oaRejectionReasonTag?: OARejectionReasonTag;
   oaCustomReasonNote?: string;
+
   notes?: string;
 
   createdAt: string;

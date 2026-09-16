@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
   Calendar, 
-  ExternalLink, 
   Edit3, 
   Trash2, 
   CheckCircle2, 
@@ -57,17 +56,17 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
   const isNotShortlistedForOA = company.oaStatus === 'not_shortlisted';
   const rejectionTags = company.rejectionReasonTags?.length 
     ? company.rejectionReasonTags 
-    : (company.rejectionReasonTag ? [company.rejectionReasonTag] : []);
+    : [];
 
   const oaRejectionTags = company.oaRejectionReasonTags?.length
     ? company.oaRejectionReasonTags
-    : (company.oaRejectionReasonTag ? [company.oaRejectionReasonTag] : ['Other']);
+    : ['Other'];
 
   const [isMarkingNotShortlisted, setIsMarkingNotShortlisted] = useState(false);
   const [selectedOATags, setSelectedOATags] = useState<OARejectionReasonTag[]>(
     company.oaRejectionReasonTags?.length
       ? company.oaRejectionReasonTags
-      : (company.oaRejectionReasonTag ? [company.oaRejectionReasonTag] : ['CGPA'])
+      : ['CGPA']
   );
   const [customOANote, setCustomOANote] = useState(company.oaCustomReasonNote || '');
 
@@ -485,29 +484,14 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
           )}
 
           {/* Actions: Edit & Delete */}
-          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
-              {company.formLink && (
-                <a
-                  href={company.formLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  title="Open Form Link"
-                  className="p-2 text-slate-400 hover:text-indigo-400 active:bg-slate-800 rounded-lg transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              )}
-            </div>
-
+          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-end gap-2">
             <div className="flex items-center gap-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit(company);
                 }}
-                className="py-1.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-all"
+                className="py-1.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
                 <span>Edit</span>
@@ -518,7 +502,7 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
                   e.stopPropagation();
                   onDelete(company.id);
                 }}
-                className="py-1.5 px-3 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 active:scale-95 text-xs text-rose-300 border border-rose-800/50 flex items-center gap-1.5 transition-all"
+                className="py-1.5 px-3 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 active:scale-95 text-xs text-rose-300 border border-rose-800/50 flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Delete</span>

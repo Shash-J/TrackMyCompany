@@ -125,11 +125,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
   });
 
   skippedCompanies.forEach((company) => {
-    const tags = company.rejectionReasonTags?.length
-      ? company.rejectionReasonTags
-      : company.rejectionReasonTag
-      ? [company.rejectionReasonTag]
-      : [];
+    const tags = company.rejectionReasonTags || [];
     const noteText = `${company.customReasonNote || ''} ${company.notes || ''}`.toLowerCase();
 
     let matchedAny = false;
@@ -172,19 +168,12 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
   // Line-by-line specific custom reason notes
   const specificNotes = skippedCompanies
     .filter((c) => !!c.customReasonNote?.trim())
-    .map((c) => {
-      const tags = c.rejectionReasonTags?.length
-        ? c.rejectionReasonTags
-        : c.rejectionReasonTag
-        ? [c.rejectionReasonTag]
-        : [];
-      return {
-        id: c.id,
-        companyName: c.name,
-        tags,
-        note: c.customReasonNote!.trim(),
-      };
-    });
+    .map((c) => ({
+      id: c.id,
+      companyName: c.name,
+      tags: c.rejectionReasonTags || [],
+      note: c.customReasonNote!.trim(),
+    }));
 
   // 4. OA Selection Breakdown Data (Applied companies: Writing OA vs Not Shortlisted for OA)
   const oaChartItems: PieChartItem[] = [
@@ -194,7 +183,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
       color: '#10B981', // Emerald
     },
     {
-      label: 'Not Shortlisted for OA',
+      label: 'Not Shortlisted',
       value: stats.oaNotShortlistedCount,
       color: '#F43F5E', // Rose
     },
@@ -224,9 +213,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
     .map((c) => ({
       id: c.id,
       companyName: c.name,
-      tags: c.oaRejectionReasonTags?.length
-        ? c.oaRejectionReasonTags
-        : (c.oaRejectionReasonTag ? [c.oaRejectionReasonTag] : ['Other']),
+      tags: c.oaRejectionReasonTags?.length ? c.oaRejectionReasonTags : ['Other'],
       note: c.oaCustomReasonNote!.trim(),
     }));
 
@@ -515,7 +502,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
                       ) : company.status === 'not_applied' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
                           <XCircle className="w-3 h-3" />
-                          {company.rejectionReasonTag || 'Skipped'}
+                          {company.rejectionReasonTags?.[0] || 'Skipped'}
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-400">

@@ -129,7 +129,7 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
   notAppliedList.forEach((company) => {
     const tags = company.rejectionReasonTags?.length 
       ? company.rejectionReasonTags 
-      : [company.rejectionReasonTag || 'Other'];
+      : ['Other'];
 
     tags.forEach((tag) => {
       if (!reasonMap[tag]) {
@@ -163,7 +163,7 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
   oaNotShortlistedList.forEach((company) => {
     const rawTags = company.oaRejectionReasonTags?.length
       ? company.oaRejectionReasonTags
-      : (company.oaRejectionReasonTag ? [company.oaRejectionReasonTag] : []);
+      : [];
 
     if (rawTags.length === 0) {
       // If no tag is explicitly selected, group under 'Other'

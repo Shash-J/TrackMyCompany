@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { Company, TierCategory, ApplicationStatus, RejectionReasonTag, PriorityLevel, OAShortlistStatus, StudentProfile, OARejectionReasonTag } from '../types';
+import type { Company, TierCategory, ApplicationStatus, RejectionReasonTag, OAShortlistStatus, StudentProfile, OARejectionReasonTag } from '../types';
 
 export interface ImportResult {
   success: boolean;
@@ -23,15 +23,12 @@ export const exportCompaniesToExcel = (
     'Application Status': c.status === 'applied' ? 'Applied' : c.status === 'not_applied' ? 'Not Applied' : 'Undecided',
     'OA Drive Date': c.oaDate ? c.oaDate : '',
     'OA Shortlist Status': c.oaStatus === 'not_shortlisted' ? 'Not Shortlisted' : (c.status === 'applied' ? 'Writing OA' : ''),
-    'OA Rejection Reason': c.oaRejectionReasonTags?.length ? c.oaRejectionReasonTags.join(', ') : (c.oaRejectionReasonTag || ''),
+    'OA Rejection Reason': c.oaRejectionReasonTags?.join(', ') || '',
     'OA Rejection Note': c.oaCustomReasonNote || '',
-    'Priority': c.priority || 'Medium',
-    'Rejection Reason Tag': c.rejectionReasonTags?.length ? c.rejectionReasonTags.join(', ') : (c.rejectionReasonTag || ''),
+    'Rejection Reason Tag': c.rejectionReasonTags?.join(', ') || '',
     'Rejection Custom Note': c.customReasonNote || '',
     'Google Form Link': c.formLink || '',
     'Application Deadline': c.applicationDeadline || '',
-    'Form Submitted': c.formSubmitted ? 'Yes' : 'No',
-    'Form Submitted Date': c.formSubmittedDate || '',
     'Notes': c.notes || '',
     'Company ID': c.id,
     'Created At': c.createdAt,
@@ -142,12 +139,11 @@ export const exportCompaniesToCSV = (companies: Company[], filename: string = 'C
     'Category': c.tier || '',
     'CTC': c.ctc || '',
     'Status': c.status,
-    'OA Date': c.oaDate || '',
+    'OA Drive Date': c.oaDate || '',
     'OA Status': c.oaStatus === 'not_shortlisted' ? 'Not Shortlisted' : (c.status === 'applied' ? 'Writing OA' : ''),
-    'OA Rejection Reason': c.oaRejectionReasonTags?.length ? c.oaRejectionReasonTags.join(', ') : (c.oaRejectionReasonTag || ''),
+    'OA Rejection Reason': c.oaRejectionReasonTags?.join(', ') || '',
     'OA Rejection Note': c.oaCustomReasonNote || '',
-    'Priority': c.priority || '',
-    'Rejection Reason': c.rejectionReasonTags?.length ? c.rejectionReasonTags.join(', ') : (c.rejectionReasonTag || ''),
+    'Rejection Reason': c.rejectionReasonTags?.join(', ') || '',
     'Custom Reason Note': c.customReasonNote || '',
     'Form Link': c.formLink || '',
     'Notes': c.notes || '',
@@ -344,8 +340,7 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
             status = 'applied';
           }
 
-          // Parse Rejection Reasons (single or multi-tag support)
-          let rejectionReasonTag: RejectionReasonTag | undefined = undefined;
+          // Parse Rejection Reasons (multi-tag support)
           let rejectionReasonTags: RejectionReasonTag[] | undefined = undefined;
           const rawReason = String(normalized['rejectionreason'] || normalized['rejectionreasontag'] || normalized['reason'] || '');
           if (rawReason) {
@@ -375,7 +370,6 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
 
             if (detectedTags.length > 0) {
               rejectionReasonTags = detectedTags;
-              rejectionReasonTag = detectedTags[0];
             }
           }
 
@@ -393,7 +387,6 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
           }
 
           // OA Rejection Reasons (when not shortlisted for OA)
-          let oaRejectionReasonTag: OARejectionReasonTag | undefined = undefined;
           let oaRejectionReasonTags: OARejectionReasonTag[] | undefined = undefined;
           const rawOAReason = String(normalized['oarejectionreason'] || normalized['oarejectionreasontag'] || normalized['oareason'] || '');
           if (rawOAReason) {
@@ -415,7 +408,6 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
 
             if (detectedOATags.length > 0) {
               oaRejectionReasonTags = detectedOATags;
-              oaRejectionReasonTag = detectedOATags[0];
             }
           }
 
@@ -433,24 +425,11 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
             } catch (_) {}
           }
 
-          // Priority
-          let priority: PriorityLevel = 'Medium';
-          const rawPriority = String(normalized['priority'] || '').toLowerCase();
-          if (rawPriority.includes('high')) priority = 'High';
-          if (rawPriority.includes('low')) priority = 'Low';
-
           const formLink = String(normalized['googleformlink'] || normalized['formlink'] || normalized['link'] || '');
           const notes = String(normalized['notes'] || normalized['note'] || '');
           const existingId = normalized['companyid'] || normalized['id'];
           const createdAt = normalized['createdat'] || now;
           const updatedAt = normalized['updatedat'] || now;
-
-          const formSubmitted = 
-            status === 'applied' || 
-            String(normalized['formsubmitted']).toLowerCase() === 'yes' || 
-            String(normalized['formsubmitted']).toLowerCase() === 'true';
-
-          const formSubmittedDate = normalized['formsubmitteddate'] || (formSubmitted ? createdAt : undefined);
 
           importedCompanies.push({
             id: existingId ? String(existingId) : `cmp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -459,15 +438,10 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
             tier,
             ctc: ctc.trim(),
             status,
-            rejectionReasonTag,
             rejectionReasonTags,
             customReasonNote: customReasonNote.trim() || undefined,
-            formSubmitted,
-            formSubmittedDate,
-            priority,
             oaDate: oaDate || undefined,
             oaStatus: status === 'applied' ? oaStatus : undefined,
-            oaRejectionReasonTag: status === 'applied' && oaStatus === 'not_shortlisted' ? oaRejectionReasonTag : undefined,
             oaRejectionReasonTags: status === 'applied' && oaStatus === 'not_shortlisted' ? oaRejectionReasonTags : undefined,
             oaCustomReasonNote: status === 'applied' && oaStatus === 'not_shortlisted' && oaCustomReasonNote.trim() ? oaCustomReasonNote.trim() : undefined,
             formLink: formLink.trim() || undefined,
