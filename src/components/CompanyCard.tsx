@@ -131,53 +131,42 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
             )}
           </div>
 
-          {/* DYNAMIC: APPLIED (OA SELECTED YES/NO) */}
+          {/* DYNAMIC: APPLIED (OA SELECTED TOGGLE SWITCH) */}
           {isApplied && (
-            <div className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400 font-medium flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-amber-400" />
-                  OA Selected:
-                </span>
-                {isOASelected ? (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                    Selected for OA ✨
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdateOAStatus(company.id, isOASelected ? 'not_shortlisted' : 'shortlisted');
+              }}
+              className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-700 transition-colors select-none"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-colors ${
+                  isOASelected
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : 'bg-slate-800/60 text-slate-400 border-slate-700/60'
+                }`}>
+                  <Award className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-semibold text-white block">OA Selected</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {isOASelected ? 'Selected for Online Assessment ✨' : 'Not shortlisted'}
                   </span>
-                ) : (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                    Not Selected
-                  </span>
-                )}
+                </div>
               </div>
 
-              {/* Binary OA Selected Switch */}
-              <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdateOAStatus(company.id, 'shortlisted');
-                  }}
-                  className={`py-1.5 px-2 rounded-lg border text-center font-bold transition-all ${
-                    isOASelected
-                      ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20'
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+              {/* Toggle Switch */}
+              <div
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                  isOASelected ? 'bg-emerald-500' : 'bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    isOASelected ? 'translate-x-5' : 'translate-x-0'
                   }`}
-                >
-                  ✓ Yes (Selected)
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdateOAStatus(company.id, 'not_shortlisted');
-                  }}
-                  className={`py-1.5 px-2 rounded-lg border text-center font-bold transition-all ${
-                    !isOASelected
-                      ? 'bg-rose-950/80 border-rose-500/60 text-rose-300'
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  ✕ Not Selected
-                </button>
+                />
               </div>
             </div>
           )}

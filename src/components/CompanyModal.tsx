@@ -255,35 +255,38 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                 <span className="text-[11px] text-emerald-400/90 font-medium">Applied</span>
               </div>
 
-              {/* OA Selected (Yes / No) */}
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1">
-                  <Award className="w-3.5 h-3.5 text-amber-400" />
-                  <span>OA Selected?</span>
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setOaSelected(true)}
-                    className={`py-2 px-3 rounded-lg border text-xs text-center font-bold transition-all flex items-center justify-center gap-1.5 ${
-                      oaSelected
-                        ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20'
-                        : 'bg-[#0B0F19] border-slate-800 text-slate-400 hover:text-white'
+              {/* OA Selected Toggle Switch */}
+              <div 
+                onClick={() => setOaSelected(!oaSelected)}
+                className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-700 transition-colors select-none"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-colors ${
+                    oaSelected
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                      : 'bg-slate-800/60 text-slate-400 border-slate-700/60'
+                  }`}>
+                    <Award className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-white block">OA Selected</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      {oaSelected ? 'Selected for Online Assessment ✨' : 'Not shortlisted'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Toggle Switch */}
+                <div
+                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                    oaSelected ? 'bg-emerald-500' : 'bg-slate-700'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      oaSelected ? 'translate-x-5' : 'translate-x-0'
                     }`}
-                  >
-                    <span>✓ Yes (Selected)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setOaSelected(false)}
-                    className={`py-2 px-3 rounded-lg border text-xs text-center font-bold transition-all flex items-center justify-center gap-1.5 ${
-                      !oaSelected
-                        ? 'bg-rose-950/80 border-rose-500/60 text-rose-300'
-                        : 'bg-[#0B0F19] border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <span>✕ Not Selected</span>
-                  </button>
+                  />
                 </div>
               </div>
             </div>
