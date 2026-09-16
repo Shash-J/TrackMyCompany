@@ -8,21 +8,30 @@ export type TierCategory =
 export type ApplicationStatus = 'applied' | 'not_applied' | 'undecided';
 
 export type RejectionReasonTag = 
+  | 'Branch'
+  | 'CGPA'
+  | 'CTC'
+  | 'Location'
+  | 'Role'
+  | 'PBC'
+  | 'Others'
+  | 'Other'
+  // Legacy aliases for backward compatibility
   | 'Low CTC'
   | 'Strict Bond / Service Agreement'
   | 'Location Not Preferred'
   | 'Not Interested in Role'
   | 'CGPA / Branch Ineligible'
-  | 'Focusing on Other Companies'
-  | 'PBC'
-  | 'Other';
+  | 'Focusing on Other Companies';
 
 export type OAShortlistStatus = 'pending' | 'shortlisted' | 'not_shortlisted';
 
 export type OARejectionReasonTag = 
   | 'CGPA'
   | 'Resume'
+  | 'Random'
   | 'Random / Unknown'
+  | 'Others'
   | 'Other';
 
 export interface Company {

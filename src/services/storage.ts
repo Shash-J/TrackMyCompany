@@ -4,22 +4,40 @@ const STORAGE_KEY_COMPANIES = 'track_my_company_companies_v1';
 const STORAGE_KEY_PROFILE = 'track_my_company_profile_v1';
 
 export const REJECTION_PRESET_TAGS: RejectionReasonTag[] = [
-  'Low CTC',
-  'Strict Bond / Service Agreement',
-  'Location Not Preferred',
-  'Not Interested in Role',
-  'CGPA / Branch Ineligible',
-  'Focusing on Other Companies',
+  'Branch',
+  'CGPA',
+  'CTC',
+  'Location',
+  'Role',
   'PBC',
-  'Other'
+  'Others'
 ];
 
 export const OA_REJECTION_PRESET_TAGS: OARejectionReasonTag[] = [
   'CGPA',
   'Resume',
-  'Random / Unknown',
-  'Other'
+  'Random',
+  'Others'
 ];
+
+export const normalizeRejectionTag = (tag: string): RejectionReasonTag => {
+  const lower = tag.toLowerCase().trim();
+  if (lower.includes('branch')) return 'Branch';
+  if (lower.includes('cgpa') || lower.includes('grade') || lower.includes('cutoff')) return 'CGPA';
+  if (lower.includes('ctc') || lower.includes('pay') || lower.includes('package') || lower.includes('salary')) return 'CTC';
+  if (lower.includes('location') || lower.includes('relocation') || lower.includes('city')) return 'Location';
+  if (lower.includes('role') || lower.includes('profile') || lower.includes('domain')) return 'Role';
+  if (lower.includes('pbc') || lower.includes('product')) return 'PBC';
+  return 'Others';
+};
+
+export const normalizeOARejectionTag = (tag: string): OARejectionReasonTag => {
+  const lower = tag.toLowerCase().trim();
+  if (lower.includes('cgpa') || lower.includes('cutoff') || lower.includes('grade')) return 'CGPA';
+  if (lower.includes('resume') || lower.includes('cv') || lower.includes('ats')) return 'Resume';
+  if (lower.includes('random') || lower.includes('unknown') || lower.includes('luck')) return 'Random';
+  return 'Others';
+};
 
 export const getProfile = (): StudentProfile | null => {
   try {
@@ -129,9 +147,10 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
   notAppliedList.forEach((company) => {
     const tags = company.rejectionReasonTags?.length 
       ? company.rejectionReasonTags 
-      : ['Other'];
+      : ['Others'];
 
-    tags.forEach((tag) => {
+    tags.forEach((rawTag) => {
+      const tag = normalizeRejectionTag(rawTag);
       if (!reasonMap[tag]) {
         reasonMap[tag] = { count: 0, customNotes: [] };
       }
@@ -166,16 +185,16 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
       : [];
 
     if (rawTags.length === 0) {
-      // If no tag is explicitly selected, group under 'Other'
-      oaReasonMap['Other'].count += 1;
+      // If no tag is explicitly selected, group under 'Others'
+      oaReasonMap['Others'].count += 1;
       if (company.oaCustomReasonNote && company.oaCustomReasonNote.trim()) {
-        if (!oaReasonMap['Other'].customNotes.includes(company.oaCustomReasonNote.trim())) {
-          oaReasonMap['Other'].customNotes.push(company.oaCustomReasonNote.trim());
+        if (!oaReasonMap['Others'].customNotes.includes(company.oaCustomReasonNote.trim())) {
+          oaReasonMap['Others'].customNotes.push(company.oaCustomReasonNote.trim());
         }
       }
     } else {
-      rawTags.forEach((tag) => {
-        const mappedTag = OA_REJECTION_PRESET_TAGS.includes(tag) ? tag : 'Other';
+      rawTags.forEach((rawTag) => {
+        const mappedTag = normalizeOARejectionTag(rawTag);
         if (!oaReasonMap[mappedTag]) {
           oaReasonMap[mappedTag] = { count: 0, customNotes: [] };
         }

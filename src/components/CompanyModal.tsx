@@ -67,7 +67,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
   const [oaCustomReasonNote, setOaCustomReasonNote] = useState('');
 
   // Skipped fields
-  const [rejectionReasonTags, setRejectionReasonTags] = useState<RejectionReasonTag[]>(['Low CTC']);
+  const [rejectionReasonTags, setRejectionReasonTags] = useState<RejectionReasonTag[]>(['CTC']);
   const [customReasonNote, setCustomReasonNote] = useState('');
 
   const [formError, setFormError] = useState('');
@@ -91,7 +91,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setOaCustomReasonNote(editCompany.oaCustomReasonNote || '');
 
       setRejectionReasonTags(
-        editCompany.rejectionReasonTags?.length ? editCompany.rejectionReasonTags : ['Low CTC']
+        editCompany.rejectionReasonTags?.length ? editCompany.rejectionReasonTags : ['CTC']
       );
       setCustomReasonNote(editCompany.customReasonNote || '');
     } else {
@@ -112,7 +112,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setOaStatusState('shortlisted');
       setOaRejectionReasonTags(['CGPA']);
       setOaCustomReasonNote('');
-      setRejectionReasonTags(['Low CTC']);
+      setRejectionReasonTags(['CTC']);
       setCustomReasonNote('');
     }
     setFormError('');

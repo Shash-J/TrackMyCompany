@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   CheckCircle2,
   XCircle,
@@ -10,6 +10,7 @@ import {
 import type { StatisticsData, Company } from '../types';
 import { PieChart } from './PieChart';
 import type { PieChartItem } from './PieChart';
+import { normalizeRejectionTag } from '../services/storage';
 
 interface StatsViewProps {
   stats: StatisticsData;
@@ -31,96 +32,64 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
     },
   ];
 
-  // 2. Tier Distribution Data
-  const tierChartItems: PieChartItem[] = [
-    {
-      label: 'Open Dream (≥ 12 LPA)',
-      value: stats.openDreamCount,
-      color: '#A855F7', // Purple
-    },
-    {
-      label: 'Dream (< 12 LPA)',
-      value: stats.dreamCount,
-      color: '#10B981', // Emerald
-    },
-    {
-      label: 'Mass / Regular',
-      value: stats.massCount,
-      color: '#3B82F6', // Blue
-    },
-    {
-      label: 'Internships & Off-Campus',
-      value: stats.internCount + stats.offCampusCount,
-      color: '#F59E0B', // Amber
-    },
-  ];
-
-  // 3. Extracted Keywords & Reason Topics for Skipped Companies
+  // 2. Skip Reasons Data (Branch, CGPA, CTC, Location, Role, PBC, Others)
   const skippedCompanies = companies.filter((c) => c.status === 'not_applied');
-  const totalSkipped = skippedCompanies.length;
 
-  const KEYWORD_TOPICS = [
+  const SKIP_REASON_TOPICS = [
+    {
+      id: 'branch',
+      label: 'Branch',
+      color: '#8B5CF6', // Purple
+      keywords: ['branch', 'ise', 'ece', 'eee', 'ete', 'dept', 'department'],
+      tags: ['Branch'],
+    },
+    {
+      id: 'cgpa',
+      label: 'CGPA',
+      color: '#F97316', // Orange
+      keywords: ['cgpa', 'cutoff', 'percentage', 'backlog', 'gpa', 'marks'],
+      tags: ['CGPA'],
+    },
     {
       id: 'ctc',
-      label: 'CTC / Package',
-      color: '#F43F5E',
-      keywords: ['ctc', 'pay', 'salary', 'package', 'stipend', 'lpa', 'compensation', 'money'],
-      tags: ['Low CTC'],
+      label: 'CTC',
+      color: '#F43F5E', // Rose
+      keywords: ['ctc', 'pay', 'salary', 'package', 'stipend', 'lpa', 'compensation', 'money', 'low ctc'],
+      tags: ['CTC', 'Low CTC'],
+    },
+    {
+      id: 'location',
+      label: 'Location',
+      color: '#06B6D4', // Cyan
+      keywords: ['location', 'relocation', 'bangalore', 'hyderabad', 'pune', 'remote', 'city', 'noida', 'chennai', 'mumbai'],
+      tags: ['Location', 'Location Not Preferred'],
+    },
+    {
+      id: 'role',
+      label: 'Role',
+      color: '#3B82F6', // Blue
+      keywords: ['role', 'tech', 'stack', 'developer', 'qa', 'support', 'profile', 'domain'],
+      tags: ['Role', 'Not Interested in Role'],
     },
     {
       id: 'pbc',
-      label: 'PBC / Product Focus',
-      color: '#3B82F6',
+      label: 'PBC',
+      color: '#10B981', // Emerald
       keywords: ['pbc', 'product', 'faang', 'startup', 'product-based'],
       tags: ['PBC'],
     },
     {
-      id: 'bond',
-      label: 'Service Agreement / Bond',
-      color: '#F59E0B',
-      keywords: ['bond', 'agreement', 'service', 'lock-in', 'penalty'],
-      tags: ['Strict Bond / Service Agreement'],
-    },
-    {
-      id: 'location',
-      label: 'Location / Relocation',
-      color: '#06B6D4',
-      keywords: ['location', 'relocation', 'bangalore', 'hyderabad', 'pune', 'remote', 'city'],
-      tags: ['Location Not Preferred'],
-    },
-    {
-      id: 'role',
-      label: 'Role / Tech Mismatch',
-      color: '#8B5CF6',
-      keywords: ['role', 'tech', 'stack', 'developer', 'qa', 'support', 'profile'],
-      tags: ['Not Interested in Role'],
-    },
-    {
-      id: 'criteria',
-      label: 'CGPA / Branch Eligibility',
-      color: '#F97316',
-      keywords: ['cgpa', 'branch', 'criteria', 'eligibility', 'cutoff', 'percentage', 'ineligible'],
-      tags: ['CGPA / Branch Ineligible'],
-    },
-    {
-      id: 'focus',
-      label: 'Other Opportunities',
-      color: '#EC4899',
-      keywords: ['focus', 'other companies', 'gate', 'cat', 'higher studies', 'off-campus'],
-      tags: ['Focusing on Other Companies'],
-    },
-    {
-      id: 'other',
-      label: 'Other Reasons',
-      color: '#64748B',
-      keywords: ['other', 'personal', 'prep', 'preparation'],
-      tags: ['Other'],
+      id: 'others',
+      label: 'Others',
+      color: '#64748B', // Slate
+      keywords: ['other', 'others', 'personal', 'prep', 'preparation', 'bond', 'agreement', 'service', 'focus', 'higher studies', 'gate', 'cat'],
+      tags: ['Others', 'Other', 'Strict Bond / Service Agreement', 'Focusing on Other Companies'],
     },
   ];
 
   // Extract topic frequencies across skipped companies
   const topicCounts: Record<string, number> = {};
-  KEYWORD_TOPICS.forEach((t) => {
+  SKIP_REASON_TOPICS.forEach((t) => {
     topicCounts[t.id] = 0;
   });
 
@@ -129,8 +98,8 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
     const noteText = `${company.customReasonNote || ''} ${company.notes || ''}`.toLowerCase();
 
     let matchedAny = false;
-    KEYWORD_TOPICS.forEach((topic) => {
-      const tagMatch = tags.some((tag) => topic.tags.includes(tag));
+    SKIP_REASON_TOPICS.forEach((topic) => {
+      const tagMatch = tags.some((tag) => topic.tags.some((t) => t.toLowerCase() === tag.toLowerCase()));
       const keywordMatch = topic.keywords.some((kw) => noteText.includes(kw));
       if (tagMatch || keywordMatch) {
         topicCounts[topic.id] = (topicCounts[topic.id] || 0) + 1;
@@ -139,11 +108,11 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
     });
 
     if (!matchedAny) {
-      topicCounts['other'] = (topicCounts['other'] || 0) + 1;
+      topicCounts['others'] = (topicCounts['others'] || 0) + 1;
     }
   });
 
-  const keywordPieItems: PieChartItem[] = KEYWORD_TOPICS
+  const skipReasonPieItems: PieChartItem[] = SKIP_REASON_TOPICS
     .filter((t) => topicCounts[t.id] > 0)
     .map((t) => ({
       label: t.label,
@@ -151,71 +120,36 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
       color: t.color,
     }));
 
-  // Line-by-line topic breakdown showing percentage
-  const topicStats = KEYWORD_TOPICS
-    .filter((t) => topicCounts[t.id] > 0)
-    .map((t) => {
-      const count = topicCounts[t.id];
-      const pct = totalSkipped > 0 ? ((count / totalSkipped) * 100).toFixed(0) : '0';
-      return {
-        ...t,
-        count,
-        percentage: pct,
-      };
-    })
-    .sort((a, b) => b.count - a.count);
+  // 3. OA Shortlist Data
+  const [oaViewMode, setOaViewMode] = useState<'status' | 'reasons'>('status');
 
-  // Line-by-line specific custom reason notes
-  const specificNotes = skippedCompanies
-    .filter((c) => !!c.customReasonNote?.trim())
-    .map((c) => ({
-      id: c.id,
-      companyName: c.name,
-      tags: c.rejectionReasonTags || [],
-      note: c.customReasonNote!.trim(),
-    }));
-
-  // 4. OA Selection Breakdown Data (Applied companies: Writing OA vs Not Shortlisted for OA)
-  const oaChartItems: PieChartItem[] = [
+  const oaStatusItems: PieChartItem[] = [
     {
       label: 'Writing OA',
       value: stats.oaShortlistedCount,
       color: '#10B981', // Emerald
     },
-    {
+    ...(stats.oaNotShortlistedCount > 0 ? [{
       label: 'Not Shortlisted',
       value: stats.oaNotShortlistedCount,
       color: '#F43F5E', // Rose
-    },
+    }] : []),
   ];
 
-  // 5. Reasons for Not Shortlisted for OA
   const OA_TAG_COLORS: Record<string, string> = {
-    'CGPA': '#F97316',            // Orange
-    'Resume': '#3B82F6',          // Blue
-    'Random / Unknown': '#A855F7',// Purple
-    'Other': '#64748B',           // Slate
+    'CGPA': '#F97316',
+    'Resume': '#3B82F6',
+    'Random': '#A855F7',
+    'Random / Unknown': '#A855F7',
+    'Others': '#64748B',
+    'Other': '#64748B',
   };
 
-  const oaReasonPieItems: PieChartItem[] = (stats.oaRejectionReasons || []).map((r) => ({
-    label: r.tag,
+  const oaReasonItems: PieChartItem[] = (stats.oaRejectionReasons || []).map((r) => ({
+    label: r.tag.replace(' / Unknown', ''),
     value: r.count,
     color: OA_TAG_COLORS[r.tag] || '#64748B',
   }));
-
-  const oaTopicStats = (stats.oaRejectionReasons || []).map((r) => ({
-    ...r,
-    color: OA_TAG_COLORS[r.tag] || '#64748B',
-  }));
-
-  const specificOANotes = companies
-    .filter((c) => c.status === 'applied' && c.oaStatus === 'not_shortlisted' && !!c.oaCustomReasonNote?.trim())
-    .map((c) => ({
-      id: c.id,
-      companyName: c.name,
-      tags: c.oaRejectionReasonTags?.length ? c.oaRejectionReasonTags : ['Other'],
-      note: c.oaCustomReasonNote!.trim(),
-    }));
 
   return (
     <div className="space-y-5 animate-fadeIn pb-6">
@@ -229,10 +163,10 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
             </span>
             <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2">
               <PieChartIcon className="w-5 h-5 text-indigo-400" />
-              <span>Your placement stats</span>
+              <span>My Stats</span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              analyse and improve your chances of getting placed
+              Analyse and improve your chances of getting placed
             </p>
           </div>
 
@@ -253,188 +187,61 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
         </div>
       </div>
 
-      {/* ROUND PIE CHARTS */}
-      <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-5">
+      {/* EXACT 3 PIE CHARTS: Application Status, Skip reasons, OA shortlist */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
         
-        {/* PIE 1: APPLICATION STATUS BREAKDOWN */}
+        {/* PIE 1: APPLICATION STATUS */}
         <PieChart
-          title="Application Status Breakdown"
+          title="Application Status"
           items={statusChartItems}
           centerLabel={`${stats.totalVisited}`}
-          centerSublabel="Total Cos."
+          centerSublabel="Total"
           emptyMessage="No companies added yet"
         />
 
-        {/* PIE 2: PLACEMENT TIER BREAKDOWN */}
+        {/* PIE 2: SKIP REASONS */}
         <PieChart
-          title="Placement Compensation Tiers"
-          items={tierChartItems}
-          centerLabel={`${stats.totalVisited}`}
-          centerSublabel="Tiers"
-          emptyMessage="No compensation tiers recorded yet"
+          title="Skip reasons"
+          items={skipReasonPieItems}
+          centerLabel={`${stats.totalNotApplied}`}
+          centerSublabel="Skipped"
+          emptyMessage="No companies skipped yet"
         />
 
-        {/* PIE 3: EXTRACTED REASONS & KEYWORDS BREAKDOWN */}
-        <div className="space-y-3">
+        {/* PIE 3: OA SHORTLIST */}
+        <div className="relative flex flex-col">
           <PieChart
-            title="Reasons & Extracted Keywords Breakdown"
-            items={keywordPieItems}
-            centerLabel={`${stats.totalNotApplied}`}
-            centerSublabel="Skipped"
-            emptyMessage="No companies skipped yet"
-          />
-
-          {/* Line-by-Line Topic Percentage Stats */}
-          {topicStats.length > 0 && (
-            <div className="p-3.5 bg-[#131B2E] border border-slate-800 rounded-xl space-y-2">
-              <span className="text-[11px] font-semibold text-slate-300 block">
-                Reasons Breakdown (Line-by-Line %):
-              </span>
-              <div className="space-y-2">
-                {topicStats.map((topic) => (
-                  <div key={topic.id} className="space-y-1">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                        <span
-                          className="w-2 h-2 rounded-full inline-block shrink-0"
-                          style={{ backgroundColor: topic.color }}
-                        />
-                        <span>{topic.label}</span>
-                      </span>
-                      <span className="font-mono text-slate-400 font-semibold">
-                        {topic.count} {topic.count === 1 ? 'co' : 'cos'} • {topic.percentage}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-[#0B0F19] h-1.5 rounded-full overflow-hidden border border-slate-800">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${topic.percentage}%`,
-                          backgroundColor: topic.color,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Student's Specific Reason Notes */}
-          {specificNotes.length > 0 && (
-            <div className="p-3.5 bg-[#131B2E] border border-slate-800 rounded-xl">
-              <span className="text-[11px] font-semibold text-slate-300 block mb-2">
-                Your Specific Reason Notes:
-              </span>
-              <div className="flex flex-col gap-1.5">
-                {specificNotes.map((item) => (
-                  <div
-                    key={item.id}
-                    className="text-[11px] text-slate-300 bg-[#0B0F19] p-2 rounded-lg border border-slate-800 flex flex-col gap-1"
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="font-bold text-white text-xs">{item.companyName}</span>
-                      <div className="flex flex-wrap gap-1">
-                        {item.tags.map((t) => (
-                          <span key={t} className="text-[9px] font-medium text-rose-300 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <span className="italic text-slate-300 break-words">"{item.note}"</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* PIE 4 & 5: OA STATUS & REASONS FOR NOT SHORTLISTED */}
-        <div className="space-y-3">
-          <PieChart
-            title="OA Shortlist Status (Applied Drives)"
-            items={oaChartItems}
-            centerLabel={`${stats.totalApplied}`}
-            centerSublabel="Applied"
+            title="OA shortlist"
+            items={oaViewMode === 'status' ? oaStatusItems : oaReasonItems}
+            centerLabel={oaViewMode === 'status' ? `${stats.totalApplied}` : `${stats.oaNotShortlistedCount}`}
+            centerSublabel={oaViewMode === 'status' ? 'Applied' : 'Filtered'}
             emptyMessage="No applied companies yet"
           />
 
-          {/* PIE 5: REASONS FOR NOT BEING SHORTLISTED FOR OA */}
           {stats.oaNotShortlistedCount > 0 && (
-            <div className="space-y-3 animate-fadeIn">
-              <PieChart
-                title="Reasons for Not Shortlisted for OA"
-                items={oaReasonPieItems}
-                centerLabel={`${stats.oaNotShortlistedCount}`}
-                centerSublabel="Filtered Out"
-                emptyMessage="No reasons recorded yet"
-              />
-
-              {/* Line-by-Line OA Reasons Breakdown */}
-              {oaTopicStats.length > 0 && (
-                <div className="p-3.5 bg-[#131B2E] border border-slate-800 rounded-xl space-y-2">
-                  <span className="text-[11px] font-semibold text-slate-300 block">
-                    OA Rejection Reasons Breakdown (Line-by-Line %):
-                  </span>
-                  <div className="space-y-2">
-                    {oaTopicStats.map((topic) => (
-                      <div key={topic.tag} className="space-y-1">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-300 font-medium flex items-center gap-1.5">
-                            <span
-                              className="w-2 h-2 rounded-full inline-block shrink-0"
-                              style={{ backgroundColor: topic.color }}
-                            />
-                            <span>{topic.tag}</span>
-                          </span>
-                          <span className="font-mono text-slate-400 font-semibold">
-                            {topic.count} {topic.count === 1 ? 'co' : 'cos'} • {topic.percentage}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-[#0B0F19] h-1.5 rounded-full overflow-hidden border border-slate-800">
-                          <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{
-                              width: `${topic.percentage}%`,
-                              backgroundColor: topic.color,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Custom OA Rejection Notes */}
-              {specificOANotes.length > 0 && (
-                <div className="p-3.5 bg-[#131B2E] border border-slate-800 rounded-xl">
-                  <span className="text-[11px] font-semibold text-slate-300 block mb-2">
-                    Specific Notes (Classified as Others):
-                  </span>
-                  <div className="flex flex-col gap-1.5">
-                    {specificOANotes.map((item) => (
-                      <div
-                        key={item.id}
-                        className="text-[11px] text-slate-300 bg-[#0B0F19] p-2 rounded-lg border border-slate-800 flex flex-col gap-1"
-                      >
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-bold text-white text-xs">{item.companyName}</span>
-                          <div className="flex flex-wrap gap-1">
-                            {item.tags.map((t) => (
-                              <span key={t} className="text-[9px] font-medium text-rose-300 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">
-                                {t}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <span className="italic text-slate-300 break-words">"{item.note}"</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div className="absolute top-4 right-4 flex items-center gap-1 bg-[#0B0F19] p-0.5 rounded-lg border border-slate-700/80 text-[10px]">
+              <button
+                type="button"
+                onClick={() => setOaViewMode('status')}
+                className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer ${
+                  oaViewMode === 'status'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Status
+              </button>
+              <button
+                type="button"
+                onClick={() => setOaViewMode('reasons')}
+                className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer ${
+                  oaViewMode === 'reasons'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Reasons
+              </button>
             </div>
           )}
         </div>
@@ -502,7 +309,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
                       ) : company.status === 'not_applied' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
                           <XCircle className="w-3 h-3" />
-                          {company.rejectionReasonTags?.[0] || 'Skipped'}
+                          {normalizeRejectionTag(company.rejectionReasonTags?.[0] || 'Skipped')}
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-400">
@@ -512,7 +319,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
                     </div>
                   </div>
 
-                  {/* Company Name & Role */}
+                  {/* Company Name & Type */}
                   <div>
                     <h4 className="text-sm font-bold text-white leading-tight">
                       {company.name}
@@ -573,16 +380,6 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
                         </span>
                       ))}
                     </div>
-                  )}
-                  {company.oaCustomReasonNote && (
-                    <p className="text-[10px] text-slate-400 bg-[#131B2E] p-2 rounded-lg border border-slate-800/80 italic">
-                      "{company.oaCustomReasonNote}"
-                    </p>
-                  )}
-                  {company.customReasonNote && (
-                    <p className="text-[10px] text-slate-400 bg-[#131B2E] p-2 rounded-lg border border-slate-800/80 italic">
-                      "{company.customReasonNote}"
-                    </p>
                   )}
                   {company.notes && (
                     <p className="text-[10px] text-slate-400 bg-[#131B2E] p-2 rounded-lg border border-slate-800/80">

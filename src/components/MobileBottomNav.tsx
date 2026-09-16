@@ -104,7 +104,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         }`}
       >
         <BarChart3 className={`w-5 h-5 ${isStatsActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
-        <span className="text-[10px] mt-1 leading-none tracking-tight">Stats</span>
+        <span className="text-[10px] mt-1 leading-none tracking-tight">My Stats</span>
       </button>
 
       {/* Tab 5: Data & Backup (Excel/CSV) */}

@@ -352,22 +352,20 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
 
             parts.forEach((part) => {
               const lower = part.toLowerCase();
-              if (lower.includes('ctc') || lower.includes('pay') || lower.includes('salary')) {
-                if (!detectedTags.includes('Low CTC')) detectedTags.push('Low CTC');
-              } else if (lower.includes('bond') || lower.includes('agreement')) {
-                if (!detectedTags.includes('Strict Bond / Service Agreement')) detectedTags.push('Strict Bond / Service Agreement');
-              } else if (lower.includes('location')) {
-                if (!detectedTags.includes('Location Not Preferred')) detectedTags.push('Location Not Preferred');
-              } else if (lower.includes('cgpa') || lower.includes('criteria') || lower.includes('eligib')) {
-                if (!detectedTags.includes('CGPA / Branch Ineligible')) detectedTags.push('CGPA / Branch Ineligible');
+              if (lower.includes('branch') || lower.includes('department')) {
+                if (!detectedTags.includes('Branch')) detectedTags.push('Branch');
+              } else if (lower.includes('cgpa') || lower.includes('cutoff') || lower.includes('grade')) {
+                if (!detectedTags.includes('CGPA')) detectedTags.push('CGPA');
+              } else if (lower.includes('ctc') || lower.includes('pay') || lower.includes('salary')) {
+                if (!detectedTags.includes('CTC')) detectedTags.push('CTC');
+              } else if (lower.includes('location') || lower.includes('relocation') || lower.includes('city')) {
+                if (!detectedTags.includes('Location')) detectedTags.push('Location');
               } else if (lower.includes('role') || lower.includes('profile')) {
-                if (!detectedTags.includes('Not Interested in Role')) detectedTags.push('Not Interested in Role');
-              } else if (lower.includes('focus') || lower.includes('other comp')) {
-                if (!detectedTags.includes('Focusing on Other Companies')) detectedTags.push('Focusing on Other Companies');
+                if (!detectedTags.includes('Role')) detectedTags.push('Role');
               } else if (lower.includes('pbc') || lower.includes('product based')) {
                 if (!detectedTags.includes('PBC')) detectedTags.push('PBC');
               } else {
-                if (!detectedTags.includes('Other')) detectedTags.push('Other');
+                if (!detectedTags.includes('Others')) detectedTags.push('Others');
               }
             });
 
@@ -403,9 +401,9 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
               } else if (lower.includes('resume') || lower.includes('cv') || lower.includes('profile')) {
                 if (!detectedOATags.includes('Resume')) detectedOATags.push('Resume');
               } else if (lower.includes('random') || lower.includes('unknown') || lower.includes('luck')) {
-                if (!detectedOATags.includes('Random / Unknown')) detectedOATags.push('Random / Unknown');
+                if (!detectedOATags.includes('Random')) detectedOATags.push('Random');
               } else {
-                if (!detectedOATags.includes('Other')) detectedOATags.push('Other');
+                if (!detectedOATags.includes('Others')) detectedOATags.push('Others');
               }
             });
 
