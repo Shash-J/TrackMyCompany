@@ -15,7 +15,8 @@ import {
   exportCompaniesToExcel, 
   exportCompaniesToCSV, 
   downloadExcelTemplate, 
-  parseExcelOrCSVFile 
+  parseExcelOrCSVFile,
+  downloadBlobFile
 } from '../services/excelService';
 import { exportToJSON, importFromJSON } from '../services/storage';
 
@@ -76,23 +77,22 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   };
 
   const handleExportExcel = () => {
-    exportCompaniesToExcel(companies, profile);
-    setStatusMessage({ type: 'success', message: 'Excel file generated and downloaded.' });
+    const dateStr = new Date().toISOString().split('T')[0];
+    exportCompaniesToExcel(companies, profile, `Campus_Placement_Tracker_${dateStr}.xlsx`);
+    setStatusMessage({ type: 'success', message: 'Excel (.xlsx) file generated and downloaded.' });
   };
 
   const handleExportCSV = () => {
-    exportCompaniesToCSV(companies);
-    setStatusMessage({ type: 'success', message: 'CSV file generated and downloaded.' });
+    const dateStr = new Date().toISOString().split('T')[0];
+    exportCompaniesToCSV(companies, `Campus_Placement_Tracker_${dateStr}.csv`);
+    setStatusMessage({ type: 'success', message: 'CSV (.csv) file generated and downloaded.' });
   };
 
   const handleJSONBackupDownload = () => {
     const jsonStr = exportToJSON();
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `TrackMyCompany_Backup_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+    const filename = `TrackMyCompany_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    downloadBlobFile(blob, filename);
     setStatusMessage({ type: 'success', message: 'JSON backup downloaded.' });
   };
 

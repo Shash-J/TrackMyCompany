@@ -82,10 +82,55 @@ export const exportCompaniesToExcel = (
     XLSX.utils.book_append_sheet(workbook, profileWorksheet, 'Student_Profile');
   }
 
-  XLSX.writeFile(workbook, filename);
+  saveWorkbookToFile(workbook, filename);
+};
+
+/**
+ * Safely trigger file download in the browser with guaranteed filename and proper MIME type.
+ * Prevents synchronous URL.revokeObjectURL which causes Chromium browsers to drop the filename
+ * and download a generic system file named with a GUID (e.g. "a8123e6a-...").
+ */
+export const downloadBlobFile = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.setAttribute('download', filename);
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  
+  link.click();
+
+  // Retain the blob URL and link long enough for Chromium/Firefox/Safari's
+  // download manager to register the download request and metadata.
+  setTimeout(() => {
+    try {
+      if (document.body.contains(link)) {
+        document.body.removeChild(link);
+      }
+      URL.revokeObjectURL(url);
+    } catch {
+      // Ignore any errors during deferred cleanup
+    }
+  }, 10000);
+};
+
+export const saveWorkbookToFile = (workbook: XLSX.WorkBook, filename: string = 'Campus_Placement_Tracker.xlsx') => {
+  const safeFilename = filename.toLowerCase().endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+  
+  // Generate ArrayBuffer representation of XLSX workbook
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  
+  // Explicit Microsoft Excel OpenXML Spreadsheet MIME type
+  const blob = new Blob([excelBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+
+  downloadBlobFile(blob, safeFilename);
 };
 
 export const exportCompaniesToCSV = (companies: Company[], filename: string = 'Campus_Placement_Tracker.csv') => {
+  const safeFilename = filename.toLowerCase().endsWith('.csv') ? filename : `${filename}.csv`;
   const rows = companies.map((c, idx) => ({
     'S.No': idx + 1,
     'Company Name': c.name,
@@ -105,14 +150,9 @@ export const exportCompaniesToCSV = (companies: Company[], filename: string = 'C
   const worksheet = XLSX.utils.json_to_sheet(rows);
   const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
   
-  const blob = new Blob([csvOutput], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', filename);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  // UTF-8 BOM so Excel opens CSVs with proper special character encoding
+  const blob = new Blob(['\uFEFF' + csvOutput], { type: 'text/csv;charset=utf-8;' });
+  downloadBlobFile(blob, safeFilename);
 };
 
 export const downloadExcelTemplate = () => {
@@ -150,7 +190,7 @@ export const downloadExcelTemplate = () => {
   const worksheet = XLSX.utils.json_to_sheet(templateRows);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Companies Template');
-  XLSX.writeFile(workbook, 'TrackMyCompany_Template.xlsx');
+  saveWorkbookToFile(workbook, 'TrackMyCompany_Template.xlsx');
 };
 
 export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => {
