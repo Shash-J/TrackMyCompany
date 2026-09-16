@@ -103,7 +103,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
       
       {/* Top Banner with Core Placement Metrics */}
       <div className="bg-[#131B2E] border border-slate-800 p-4 sm:p-5 rounded-2xl shadow-lg shadow-black/20">
-        <div className="flex flex-col gap-3 mb-4">
+        <div className="flex flex-col gap-3">
           <div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-400 block mb-1">
               Campus Analytics & Records
@@ -130,26 +130,6 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
               <span className="block text-lg font-extrabold text-amber-300 font-mono leading-tight">{stats.oaShortlistConversionRate}%</span>
               <span className="text-[9px] uppercase font-semibold text-slate-400">Shortlist</span>
             </div>
-          </div>
-        </div>
-
-        {/* 4 Mini Summary Metric Chips */}
-        <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-800/80">
-          <div className="p-2.5 bg-[#0B0F19] rounded-xl border border-slate-800">
-            <span className="text-[9px] text-slate-400 uppercase font-semibold block">Total Drives</span>
-            <span className="text-sm font-bold text-white font-mono">{stats.totalVisited}</span>
-          </div>
-          <div className="p-2.5 bg-[#0B0F19] rounded-xl border border-slate-800">
-            <span className="text-[9px] text-emerald-400 uppercase font-semibold block">Forms Submitted</span>
-            <span className="text-sm font-bold text-emerald-300 font-mono">{stats.totalApplied} ({stats.appliedPercentage}%)</span>
-          </div>
-          <div className="p-2.5 bg-[#0B0F19] rounded-xl border border-slate-800">
-            <span className="text-[9px] text-rose-400 uppercase font-semibold block">Skipped / Passed</span>
-            <span className="text-sm font-bold text-rose-300 font-mono">{stats.totalNotApplied} ({stats.notAppliedPercentage}%)</span>
-          </div>
-          <div className="p-2.5 bg-[#0B0F19] rounded-xl border border-slate-800">
-            <span className="text-[9px] text-amber-400 uppercase font-semibold block">Shortlisted for OA</span>
-            <span className="text-sm font-bold text-amber-300 font-mono">{stats.oaShortlistedCount}</span>
           </div>
         </div>
       </div>
