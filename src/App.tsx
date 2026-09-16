@@ -190,42 +190,22 @@ export const App: React.FC = () => {
     }
   };
 
-  // Drag and drop reordering state & handlers
+  // Drag and drop reordering state & handlers: shifts all intermediate ranks
   const [draggedCompanyId, setDraggedCompanyId] = useState<string | null>(null);
   const [dragOverCompanyId, setDragOverCompanyId] = useState<string | null>(null);
 
-  const reorderCompanies = (sourceId: string, targetId: string, currentFiltered: Company[]) => {
+  const reorderCompanies = (sourceId: string, targetId: string) => {
     if (sourceId === targetId) return;
 
-    const sourceIdx = currentFiltered.findIndex((c) => c.id === sourceId);
-    const targetIdx = currentFiltered.findIndex((c) => c.id === targetId);
+    const sourceIdx = companies.findIndex((c) => c.id === sourceId);
+    const targetIdx = companies.findIndex((c) => c.id === targetId);
     if (sourceIdx === -1 || targetIdx === -1) return;
 
-    // 1. Reorder within current filtered list
-    const newFiltered = [...currentFiltered];
-    const [movedItem] = newFiltered.splice(sourceIdx, 1);
-    newFiltered.splice(targetIdx, 0, movedItem);
-
-    // 2. Map reordered items back to master list so All Companies and storage are synchronized
-    if (currentFiltered.length === companies.length) {
-      saveCompanies(newFiltered);
-      setCompanies(newFiltered);
-      return;
-    }
-
-    const filteredIdSet = new Set(currentFiltered.map((c) => c.id));
+    // Pure rank shifting: remove from sourceIdx and insert at targetIdx
+    // This shifts all companies in between by one instead of interchanging
     const newMaster = [...companies];
-    const masterPositions: number[] = [];
-
-    companies.forEach((c, idx) => {
-      if (filteredIdSet.has(c.id)) {
-        masterPositions.push(idx);
-      }
-    });
-
-    masterPositions.forEach((pos, i) => {
-      newMaster[pos] = newFiltered[i];
-    });
+    const [movedItem] = newMaster.splice(sourceIdx, 1);
+    newMaster.splice(targetIdx, 0, movedItem);
 
     saveCompanies(newMaster);
     setCompanies(newMaster);
@@ -254,7 +234,7 @@ export const App: React.FC = () => {
   const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     if (draggedCompanyId && draggedCompanyId !== targetId) {
-      reorderCompanies(draggedCompanyId, targetId, filteredCompanies);
+      reorderCompanies(draggedCompanyId, targetId);
     }
     setDraggedCompanyId(null);
     setDragOverCompanyId(null);
