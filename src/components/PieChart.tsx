@@ -13,6 +13,7 @@ interface PieChartProps {
   centerLabel?: string;
   centerSublabel?: string;
   emptyMessage?: string;
+  headerAction?: React.ReactNode;
 }
 
 export const PieChart: React.FC<PieChartProps> = ({
@@ -21,6 +22,7 @@ export const PieChart: React.FC<PieChartProps> = ({
   centerLabel,
   centerSublabel,
   emptyMessage = 'No data to display',
+  headerAction,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -89,83 +91,90 @@ export const PieChart: React.FC<PieChartProps> = ({
   });
 
   return (
-    <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-5 shadow-lg shadow-black/20 flex flex-col justify-between">
-      <h3 className="text-sm font-bold text-white tracking-tight mb-4 flex items-center justify-between">
-        <span>{title}</span>
-        <span className="text-xs font-mono font-normal text-slate-400">
-          Total: {totalValue}
-        </span>
-      </h3>
+    <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg shadow-black/20 flex flex-col justify-between h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-800/80">
+        <h3 className="text-sm font-bold text-white tracking-tight truncate">
+          {title}
+        </h3>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {headerAction}
+          <span className="text-[11px] font-mono text-slate-400 bg-[#0B0F19] px-2 py-0.5 rounded-md border border-slate-800">
+            Total: {totalValue}
+          </span>
+        </div>
+      </div>
 
       {totalValue === 0 ? (
-        <div className="py-12 text-center text-slate-500 text-xs">
-          <div className="w-16 h-16 rounded-full border-2 border-dashed border-slate-800 mx-auto mb-2 flex items-center justify-center text-slate-600 font-mono text-[10px]">
+        <div className="py-12 text-center text-slate-500 text-xs flex-1 flex flex-col items-center justify-center">
+          <div className="w-14 h-14 rounded-full border-2 border-dashed border-slate-800 mx-auto mb-2 flex items-center justify-center text-slate-600 font-mono text-[10px]">
             0%
           </div>
           <p>{emptyMessage}</p>
         </div>
       ) : (
-        <div className="flex flex-col sm:flex-row items-center justify-around gap-6">
-          {/* Round Pie / Donut SVG */}
-          <div 
-            className="relative w-44 h-44 shrink-0" 
-            style={{ width: '176px', height: '176px', minWidth: '176px', minHeight: '176px' }}
-          >
-            <svg 
-              width={176} 
-              height={176} 
-              viewBox="0 0 200 200" 
-              className="w-full h-full transform transition-transform"
-              style={{ width: '176px', height: '176px', minWidth: '176px', minHeight: '176px' }}
+        <div className="flex flex-col items-center flex-1 w-full justify-between">
+          {/* Donut Chart (Fixed height container so all 3 charts vertically align) */}
+          <div className="h-40 w-full flex items-center justify-center shrink-0">
+            <div 
+              className="relative w-36 h-36 shrink-0 flex items-center justify-center" 
+              style={{ width: '144px', height: '144px' }}
             >
-              {slices.map((slice) => {
-                const isHovered = hoveredIndex === slice.index;
-                return (
-                  <path
-                    key={slice.index}
-                    d={slice.pathData}
-                    fill={slice.item.color}
-                    fillRule="evenodd"
-                    className="cursor-pointer transition-all duration-200 hover:opacity-90 active:opacity-80"
-                    style={{
-                      transform: isHovered ? 'scale(1.04)' : 'scale(1)',
-                      transformOrigin: `${centerX}px ${centerY}px`,
-                      filter: isHovered ? 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.5))' : 'none',
-                    }}
-                    onClick={() => setHoveredIndex(hoveredIndex === slice.index ? null : slice.index)}
-                    onMouseEnter={() => setHoveredIndex(slice.index)}
-                    onMouseLeave={() => setHoveredIndex(null)}
-                  />
-                );
-              })}
-            </svg>
+              <svg 
+                width={144} 
+                height={144} 
+                viewBox="0 0 200 200" 
+                className="w-full h-full transform transition-transform"
+              >
+                {slices.map((slice) => {
+                  const isHovered = hoveredIndex === slice.index;
+                  return (
+                    <path
+                      key={slice.index}
+                      d={slice.pathData}
+                      fill={slice.item.color}
+                      fillRule="evenodd"
+                      className="cursor-pointer transition-all duration-200 hover:opacity-90 active:opacity-80"
+                      style={{
+                        transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                        transformOrigin: `${centerX}px ${centerY}px`,
+                        filter: isHovered ? 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.5))' : 'none',
+                      }}
+                      onClick={() => setHoveredIndex(hoveredIndex === slice.index ? null : slice.index)}
+                      onMouseEnter={() => setHoveredIndex(slice.index)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    />
+                  );
+                })}
+              </svg>
 
-            {/* Center Donut Hole Text */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-              {hoveredIndex !== null && slices[hoveredIndex] ? (
-                <>
-                  <span className="text-xl font-extrabold text-white font-mono leading-none">
-                    {slices[hoveredIndex].percentage}%
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium line-clamp-1 px-2">
-                    {slices[hoveredIndex].item.value} {slices[hoveredIndex].item.value === 1 ? 'co.' : 'cos.'}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="text-xl font-extrabold text-white font-mono leading-none">
-                    {centerLabel || totalValue}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    {centerSublabel || 'Companies'}
-                  </span>
-                </>
-              )}
+              {/* Center Donut Hole Text */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                {hoveredIndex !== null && slices[hoveredIndex] ? (
+                  <>
+                    <span className="text-xl font-extrabold text-white font-mono leading-none">
+                      {slices[hoveredIndex].percentage}%
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium line-clamp-1 px-1">
+                      {slices[hoveredIndex].item.value} {slices[hoveredIndex].item.value === 1 ? 'co.' : 'cos.'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xl font-extrabold text-white font-mono leading-none">
+                      {centerLabel || totalValue}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {centerSublabel || 'Companies'}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Color-Coded Legend */}
-          <div className="flex-1 w-full space-y-1.5">
+          {/* Color-Coded Legend: Full width with spacious, un-cramped rows */}
+          <div className="w-full mt-3 pt-2.5 border-t border-slate-800/60 flex-1 flex flex-col justify-start space-y-1">
             {slices.map((slice) => {
               const isHovered = hoveredIndex === slice.index;
               return (
@@ -174,8 +183,8 @@ export const PieChart: React.FC<PieChartProps> = ({
                   onClick={() => setHoveredIndex(hoveredIndex === slice.index ? null : slice.index)}
                   onMouseEnter={() => setHoveredIndex(slice.index)}
                   onMouseLeave={() => setHoveredIndex(null)}
-                  className={`flex items-center justify-between p-2 rounded-xl transition-all cursor-pointer select-none active:scale-[0.99] ${
-                    isHovered ? 'bg-[#0B0F19] border border-slate-700' : 'hover:bg-[#0B0F19]/50'
+                  className={`flex items-center justify-between px-2 py-1.5 rounded-lg transition-all cursor-pointer select-none active:scale-[0.99] ${
+                    isHovered ? 'bg-[#0B0F19] border border-slate-700' : 'hover:bg-[#0B0F19]/60'
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
@@ -188,11 +197,11 @@ export const PieChart: React.FC<PieChartProps> = ({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 font-mono shrink-0">
+                  <div className="flex items-center gap-1.5 font-mono shrink-0">
                     <span className="text-xs text-slate-400">
                       {slice.item.value}
                     </span>
-                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
                       {slice.percentage}%
                     </span>
                   </div>

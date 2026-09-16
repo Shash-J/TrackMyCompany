@@ -209,42 +209,41 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
         />
 
         {/* PIE 3: OA SHORTLIST */}
-        <div className="relative flex flex-col">
-          <PieChart
-            title="OA shortlist"
-            items={oaViewMode === 'status' ? oaStatusItems : oaReasonItems}
-            centerLabel={oaViewMode === 'status' ? `${stats.totalApplied}` : `${stats.oaNotShortlistedCount}`}
-            centerSublabel={oaViewMode === 'status' ? 'Applied' : 'Filtered'}
-            emptyMessage="No applied companies yet"
-          />
-
-          {stats.oaNotShortlistedCount > 0 && (
-            <div className="absolute top-4 right-4 flex items-center gap-1 bg-[#0B0F19] p-0.5 rounded-lg border border-slate-700/80 text-[10px]">
-              <button
-                type="button"
-                onClick={() => setOaViewMode('status')}
-                className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer ${
-                  oaViewMode === 'status'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Status
-              </button>
-              <button
-                type="button"
-                onClick={() => setOaViewMode('reasons')}
-                className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer ${
-                  oaViewMode === 'reasons'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Reasons
-              </button>
-            </div>
-          )}
-        </div>
+        <PieChart
+          title="OA shortlist"
+          items={oaViewMode === 'status' ? oaStatusItems : oaReasonItems}
+          centerLabel={oaViewMode === 'status' ? `${stats.totalApplied}` : `${stats.oaNotShortlistedCount}`}
+          centerSublabel={oaViewMode === 'status' ? 'Applied' : 'Filtered'}
+          emptyMessage="No applied companies yet"
+          headerAction={
+            stats.oaNotShortlistedCount > 0 ? (
+              <div className="flex items-center gap-1 bg-[#0B0F19] p-0.5 rounded-lg border border-slate-700/80 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setOaViewMode('status')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all cursor-pointer ${
+                    oaViewMode === 'status'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Status
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOaViewMode('reasons')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all cursor-pointer ${
+                    oaViewMode === 'reasons'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Reasons
+                </button>
+              </div>
+            ) : undefined
+          }
+        />
 
       </div>
 
