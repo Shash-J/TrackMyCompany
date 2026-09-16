@@ -17,7 +17,8 @@ export const exportCompaniesToExcel = (
   const rows = companies.map((c, idx) => ({
     'S.No': idx + 1,
     'Company Name': c.name,
-    'Role / Profile': c.role || 'Software Engineer',
+    'Opportunity Type': c.type || c.role || 'Full Time (FTE)',
+    'Role / Profile': c.role || '',
     'Category / Tier': c.tier || 'DREAM',
     'CTC / Package': c.ctc || 'N/A',
     'Application Status': c.status === 'applied' ? 'Applied' : c.status === 'not_applied' ? 'Not Applied' : 'Undecided',
@@ -135,6 +136,7 @@ export const exportCompaniesToCSV = (companies: Company[], filename: string = 'C
   const rows = companies.map((c, idx) => ({
     'S.No': idx + 1,
     'Company Name': c.name,
+    'Type': c.type || c.role || 'Full Time (FTE)',
     'Role': c.role || '',
     'Category': c.tier || '',
     'CTC': c.ctc || '',
@@ -306,8 +308,9 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
             return;
           }
 
-          // Parse role
-          const role = normalized['role'] || normalized['profile'] || normalized['jobprofile'] || normalized['position'] || 'Software Engineer';
+          // Parse type & role
+          const type = normalized['opportunitytype'] || normalized['type'] || '';
+          const role = normalized['role'] || normalized['profile'] || normalized['jobprofile'] || normalized['position'] || '';
 
           // Parse CTC
           const ctc = String(normalized['ctc'] || normalized['package'] || normalized['ctcpackage'] || 'Not Disclosed');
@@ -434,7 +437,8 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
           importedCompanies.push({
             id: existingId ? String(existingId) : `cmp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             name: companyName.trim(),
-            role: String(role).trim(),
+            type: type ? String(type).trim() : undefined,
+            role: role ? String(role).trim() : undefined,
             tier,
             ctc: ctc.trim(),
             status,

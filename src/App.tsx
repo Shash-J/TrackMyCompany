@@ -291,6 +291,7 @@ export const App: React.FC = () => {
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
           const matchName = c.name.toLowerCase().includes(q);
+          const matchType = (c.type || '').toLowerCase().includes(q);
           const matchRole = (c.role || '').toLowerCase().includes(q);
           const matchCtc = (c.ctc || '').toLowerCase().includes(q);
           const matchReason = (c.rejectionReasonTags || []).some((t) => t.toLowerCase().includes(q));
@@ -299,7 +300,7 @@ export const App: React.FC = () => {
           const matchOACustomReason = (c.oaCustomReasonNote || '').toLowerCase().includes(q);
           const matchNotes = (c.notes || '').toLowerCase().includes(q);
 
-          if (!matchName && !matchRole && !matchCtc && !matchReason && !matchCustomReason && !matchOAReason && !matchOACustomReason && !matchNotes) {
+          if (!matchName && !matchType && !matchRole && !matchCtc && !matchReason && !matchCustomReason && !matchOAReason && !matchOACustomReason && !matchNotes) {
             return false;
           }
         }
@@ -382,7 +383,7 @@ export const App: React.FC = () => {
                               </span>
                             </div>
                             <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                              {upcomingDrive.role} • <span className="text-indigo-300 font-mono font-semibold">{upcomingDrive.ctc}</span>
+                              {upcomingDrive.type || upcomingDrive.role || 'Full Time (FTE)'} • <span className="text-indigo-300 font-mono font-semibold">{upcomingDrive.ctc}</span>
                             </p>
                           </div>
                         </div>

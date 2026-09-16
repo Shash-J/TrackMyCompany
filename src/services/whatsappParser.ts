@@ -2,12 +2,12 @@ import type { TierCategory } from '../types';
 
 export interface ParsedWhatsAppAnnouncement {
   name: string;
-  role: string;
+  type: string; // The opportunity type: e.g. 'Intern + PBC (FTE)', 'Preplacement Talk/Guest Talk', 'FTE', 'Hackathon'
+  role?: string;
   tier: TierCategory;
   ctc: string;
   oaDate?: string;
   formLink?: string;
-  applicationDeadline?: string;
   notes?: string;
 }
 
@@ -21,7 +21,7 @@ export function parseWhatsAppMessage(rawText: string): ParsedWhatsAppAnnouncemen
 
   const text = rawText.trim();
 
-  // Helper to extract line value following a pattern
+  // Helper to extract a single line value following a pattern
   const extractField = (pattern: RegExp): string | null => {
     const match = text.match(pattern);
     if (!match || !match[1]) return null;
@@ -69,8 +69,47 @@ export function parseWhatsAppMessage(rawText: string): ParsedWhatsAppAnnouncemen
     extraCompanyNote = parenMatch[2].trim();
   }
 
-  // 2. EXTRACT ROLE / JOB PROFILE
-  let role = '';
+  // 2. EXTRACT TYPE (What students care most about: Intern, FTE, PBC, Hackathon, Preplacement Talk)
+  let opportunityType = '';
+  const typeMatch = text.match(/(?:^|\n)\s*[\*_]*\s*Type\s*[\*_]*\s*[:\-]\s*([^\r\n]+)/i);
+  const rawType = typeMatch ? typeMatch[1].replace(/[\*_]/g, '').trim() : '';
+
+  if (rawType) {
+    // Strip Tier prefix (like OPEN DREAM, or DREAM,) if there is further opportunity description
+    let cleaned = rawType
+      .replace(/^(?:OPEN\s*DREAM|DREAM)\s*[,:\-\/]\s*/i, '')
+      .replace(/^(?:OPEN\s*DREAM|DREAM)\s+/i, '')
+      .trim();
+
+    if (cleaned && cleaned.length > 2 && !/^(?:OPEN\s*DREAM|DREAM)$/i.test(cleaned)) {
+      if (/performance based conversion/i.test(cleaned)) {
+        opportunityType = 'Internship + PBC (FTE)';
+      } else {
+        opportunityType = cleaned;
+      }
+    } else {
+      opportunityType = rawType;
+    }
+  }
+
+  if (!opportunityType) {
+    if (/preplacement talk|guest talk|pre-placement|pre placement/i.test(text)) {
+      opportunityType = 'Preplacement Talk';
+    } else if (/hackathon/i.test(text)) {
+      opportunityType = 'Hackathon';
+    } else if (/intern\b|internship/i.test(text) && /fte|full time|pbc/i.test(text)) {
+      opportunityType = 'Intern + PBC (FTE)';
+    } else if (/intern\b|internship/i.test(text)) {
+      opportunityType = 'Internship';
+    } else if (/fte|full time/i.test(text)) {
+      opportunityType = 'Full Time (FTE)';
+    } else {
+      opportunityType = 'Full Time (FTE)';
+    }
+  }
+
+  // 3. EXTRACT OPTIONAL SPECIFIC ROLE (Only if explicitly mentioned in text, never fabricate PPS/etc)
+  let role: string | undefined = undefined;
   const rolePatterns = [
     /(?:^|\n)\s*[\*_]*\s*(?:Job\s*Role|Role|Job\s*Profile|Position)\s*[\*_]*\s*[:\-]\s*([^\r\n]+)/i,
     /(?:^|\n)\s*[\*_]*\s*(?:Job\s*Description|JD)\s*[\*_]*\s*[:\-]\s*([^\r\n]+)/i,
@@ -85,25 +124,7 @@ export function parseWhatsAppMessage(rawText: string): ParsedWhatsAppAnnouncemen
     }
   }
 
-  // Check if role is in Stipend line, e.g. "Stipend: Software Engineer Intern (Backend / Frontend / QA): 45K per month"
-  if (!role) {
-    const stipendRoleMatch = text.match(/(?:Stipend|Role)\s*:\s*([^:\r\n]+Intern[^\r\n]*)/i);
-    if (stipendRoleMatch && stipendRoleMatch[1]) {
-      role = stipendRoleMatch[1].replace(/[\*_]/g, '').trim();
-    }
-  }
-
-  if (!role) {
-    if (/hackathon/i.test(text)) {
-      role = 'Hackathon / Challenge';
-    } else if (/preplacement talk|guest talk|pre placement connect/i.test(text)) {
-      role = 'Pre-Placement Session';
-    } else {
-      role = 'Software Engineer';
-    }
-  }
-
-  // 3. EXTRACT CTC / STIPEND
+  // 4. EXTRACT CTC / STIPEND
   let ctc = '';
   let stipend = '';
 
@@ -112,7 +133,6 @@ export function parseWhatsAppMessage(rawText: string): ParsedWhatsAppAnnouncemen
   if (ctcMatch) {
     let ctcVal = ctcMatch[1].replace(/[\*_]/g, '').trim();
     if (!ctcVal) {
-      // Look at subsequent non-empty line
       const afterMatch = text.slice(ctcMatch.index! + ctcMatch[0].length);
       const nextLine = afterMatch.split('\n').map(l => l.trim()).find(l => l.length > 0 && !l.startsWith('*'));
       if (nextLine) {
@@ -128,7 +148,6 @@ export function parseWhatsAppMessage(rawText: string): ParsedWhatsAppAnnouncemen
   const stipendMatch = text.match(/(?:^|\n)\s*[\*_]*\s*Stipend\s*[\*_]*\s*[:\-]\s*([^\r\n]+)/i);
   if (stipendMatch) {
     let stipendVal = stipendMatch[1].replace(/[\*_]/g, '').trim();
-    // If inline "Location:" is present in the stipend string, cut it off
     const locSplit = stipendVal.split(/Location\s*:/i);
     if (locSplit.length > 1) {
       stipendVal = locSplit[0].trim();
@@ -153,7 +172,7 @@ export function parseWhatsAppMessage(rawText: string): ParsedWhatsAppAnnouncemen
     finalCtc = 'Not Disclosed';
   }
 
-  // 4. EXTRACT TIER / CATEGORY
+  // 5. EXTRACT TIER / CATEGORY
   let tier: TierCategory = 'DREAM';
   const typeVal = extractField(/(?:^|\n)\s*[\*_]*\s*Type\s*[\*_]*\s*[:\-]\s*([^\r\n]+)/i);
   const typeStr = (typeVal || '').toLowerCase();
@@ -167,7 +186,6 @@ export function parseWhatsAppMessage(rawText: string): ParsedWhatsAppAnnouncemen
   } else if (typeStr.includes('internship only') || typeStr.includes('summer internship')) {
     tier = 'INTERN_ONLY';
   } else {
-    // Infer from CTC
     const ctcNumMatch = finalCtc.match(/(\d+(?:\.\d+)?)\s*(?:lpa|lakh|lac)/i);
     if (ctcNumMatch && parseFloat(ctcNumMatch[1]) >= 12) {
       tier = 'OPEN_DREAM';
@@ -180,14 +198,14 @@ export function parseWhatsAppMessage(rawText: string): ParsedWhatsAppAnnouncemen
     }
   }
 
-  // 5. EXTRACT DRIVE DATE / OA DATE
+  // 6. EXTRACT DRIVE DATE / OA DATE (Extract ONLY clean date, never copy Tomorrow/Today/variables)
   let oaDate: string | undefined = undefined;
   const driveDateVal = extractField(/(?:^|\n)\s*[\*_]*\s*Drive\s*Dates?\s*[\*_]*\s*[:\-]\s*([^\r\n]+)/i);
-  if (driveDateVal && !['tbd', 'na', 'tba', 'will confirm'].includes(driveDateVal.toLowerCase())) {
+  if (driveDateVal) {
     oaDate = parseDateToISO(driveDateVal, text);
   }
 
-  // 6. EXTRACT REGISTRATION LINK
+  // 7. EXTRACT REGISTRATION LINK
   let formLink: string | undefined = undefined;
   const linkMatches = text.match(/https?:\/\/[^\s\*\)\>]+/g);
   if (linkMatches && linkMatches.length > 0) {
@@ -195,85 +213,88 @@ export function parseWhatsAppMessage(rawText: string): ParsedWhatsAppAnnouncemen
     formLink = gForm || linkMatches[0];
   }
 
-  // 7. EXTRACT DEADLINE
-  const deadline = extractField(/(?:^|\n)\s*[\*_]*\s*DEADLINE\s*[\*_]*\s*[:\-]\s*([^\r\n]+)/i);
-
-  // 8. COMPOSE NOTES
+  // 8. COMPOSE NOTES: Exclude Eligibility and Deadline completely
   const notesParts: string[] = [];
 
-  const elig = extractField(/(?:^|\n)\s*[\*_]*\s*Eligibility\s*[\*_]*\s*[:\-]\s*([^\r\n]+)/i);
-  if (elig) notesParts.push(`Eligibility: ${elig}`);
-
-  const cgpa = extractField(/(?:^|\n)\s*[\*_]*\s*CGPA\s*Criteria\s*[\*_]*\s*[:\-]\s*([^\r\n]+)/i);
-  if (cgpa) notesParts.push(`CGPA: ${cgpa}`);
-
-  const loc = extractField(/(?:^|\n)\s*[\*_]*\s*Location\s*[\*_]*\s*[:\-]\s*([^\r\n]+)/i);
-  if (loc && !['not specified', 'na', 'tbd'].includes(loc.toLowerCase())) {
-    notesParts.push(`Location: ${loc}`);
+  // Only keep genuine special instructions (e.g. CCNA certificate, specific notes)
+  const specialNoteMatch = text.match(/(?:^|\n)\s*[\*_]*\s*(?:IMPORTANT\s*DETAILS|NOTE|Important_Note)\s*[\*_]*\s*[:\-]\s*([^\r\n]+)/i);
+  if (specialNoteMatch && specialNoteMatch[1]) {
+    const noteContent = specialNoteMatch[1].replace(/[\*_]/g, '').trim();
+    if (!noteContent.toLowerCase().includes('placement policy')) {
+      notesParts.push(noteContent);
+    }
   }
 
-  if (deadline) notesParts.push(`Deadline: ${deadline}`);
-  if (extraCompanyNote) notesParts.push(`Note: ${extraCompanyNote}`);
+  if (extraCompanyNote) {
+    notesParts.push(`Note: ${extraCompanyNote}`);
+  }
 
   return {
     name: cleanName,
-    role: role || 'Software Engineer',
+    type: opportunityType,
+    role: role || undefined,
     tier,
     ctc: finalCtc,
     oaDate,
     formLink,
-    applicationDeadline: deadline || undefined,
     notes: notesParts.length > 0 ? notesParts.join('\n') : undefined,
   };
 }
 
 /**
  * Converts various placement drive date strings into YYYY-MM-DD ISO format.
+ * Strictly extracts only the date, ignoring relative tags like "Tomorrow", "Today", "PPT", "OA".
  */
 function parseDateToISO(dateStr: string, fullText: string): string | undefined {
   if (!dateStr) return undefined;
-  const s = dateStr.replace(/[\*_]/g, '').trim();
+  const s = dateStr.replace(/[\*_]/g, ' ').trim();
+  if (/^(tbd|tba|na|not specified|will confirm|tba\b)/i.test(s)) return undefined;
 
-  // 1. Slash format: DD/MM/YY or DD/MM/YYYY e.g. "1/12/25" or "10/08/2026"
+  // 1. Slash format: DD/MM/YY or DD/MM/YYYY e.g. "1/12/25 Tomorrow" or "10/08/2026"
   const slashMatch = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
   if (slashMatch) {
     const day = parseInt(slashMatch[1], 10);
     const month = parseInt(slashMatch[2], 10) - 1;
     let year = parseInt(slashMatch[3], 10);
     if (year < 100) year += 2000;
-    const d = new Date(year, month, day);
     const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    return `${year}-${pad(month + 1)}-${pad(day)}`;
   }
 
-  // 2. Day + Month name e.g. "25th September", "12th Aug", "30th June, 2026"
-  const textMatch = s.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([A-Za-z]+)(?:\s*,?\s*(\d{4}))?/i);
-  if (textMatch) {
-    const day = parseInt(textMatch[1], 10);
-    const monthStr = textMatch[2].toLowerCase();
-    const months: Record<string, number> = {
-      jan: 0, january: 0,
-      feb: 1, february: 1,
-      mar: 2, march: 2,
-      apr: 3, april: 3,
-      may: 4,
-      jun: 5, june: 5,
-      jul: 6, july: 6,
-      aug: 7, august: 7,
-      sep: 8, sept: 8, september: 8,
-      oct: 9, october: 9,
-      nov: 10, november: 10,
-      dec: 11, december: 11,
-    };
-    const prefix = monthStr.substring(0, 3);
-    if (months[prefix] !== undefined) {
-      let year = textMatch[3] ? parseInt(textMatch[3], 10) : null;
+  // 2. Day + Month name e.g. "25th September", "12th Aug PPT", "Pre Placement Talk on 30th June, 2026", "OA on 27th Oct"
+  const months: Record<string, number> = {
+    jan: 0, january: 0,
+    feb: 1, february: 1,
+    mar: 2, march: 2,
+    apr: 3, april: 3,
+    may: 4,
+    jun: 5, june: 5,
+    jul: 6, july: 6,
+    aug: 7, august: 7,
+    sep: 8, sept: 8, september: 8,
+    oct: 9, october: 9,
+    nov: 10, november: 10,
+    dec: 11, december: 11,
+  };
+
+  const dayMonthMatch = s.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([A-Za-z]+)(?:\s*,?\s*(\d{4}))?/i);
+  if (dayMonthMatch) {
+    const day = parseInt(dayMonthMatch[1], 10);
+    const monthStr = dayMonthMatch[2].toLowerCase().substring(0, 3);
+    if (months[monthStr] !== undefined) {
+      const month = months[monthStr];
+      let year = dayMonthMatch[3] ? parseInt(dayMonthMatch[3], 10) : null;
       if (!year) {
-        const textYearMatch = fullText.match(/\b(202[4-9])\b/);
-        year = textYearMatch ? parseInt(textYearMatch[1], 10) : new Date().getFullYear();
+        // Look for DD/MM/YYYY date pattern in the message (e.g. from deadline)
+        const dateMatch = fullText.match(/\b\d{1,2}\/\d{1,2}\/(202\d)\b/);
+        if (dateMatch) {
+          year = parseInt(dateMatch[1], 10);
+        } else {
+          year = new Date().getFullYear();
+        }
       }
       const pad = (n: number) => String(n).padStart(2, '0');
-      return `${year}-${pad(months[prefix] + 1)}-${pad(day)}`;
+      return `${year}-${pad(month + 1)}-${pad(day)}`;
     }
   }
 

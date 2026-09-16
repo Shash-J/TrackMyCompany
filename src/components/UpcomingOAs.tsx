@@ -119,7 +119,7 @@ export const UpcomingOAs: React.FC<UpcomingOAsProps> = ({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                      <span className="text-slate-300 font-medium">{company.role}</span>
+                      <span className="text-slate-300 font-medium">{company.type || company.role || 'Full Time (FTE)'}</span>
                       <span>•</span>
                       <span className="text-indigo-300 font-mono font-semibold">{company.ctc}</span>
                       <span>•</span>

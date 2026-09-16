@@ -204,11 +204,11 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
             </div>
           </div>
 
-          {/* Role & Drive Date */}
+          {/* Opportunity Type & Drive Date */}
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
             <div>
-              <span className="text-slate-400">Role: </span>
-              <span className="font-medium text-white">{company.role || 'Software Engineer'}</span>
+              <span className="text-slate-400">Type: </span>
+              <span className="font-semibold text-white">{company.type || company.role || 'Full Time (FTE)'}</span>
             </div>
 
             {company.oaDate && (

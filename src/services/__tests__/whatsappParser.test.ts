@@ -31,10 +31,13 @@ DEADLINE: 5.00 PM, 17/09/2026 (Tomorrow)`;
 const result2 = parseWhatsAppMessage(deltekMsg);
 assert(result2 !== null, 'Deltek should be parsed');
 assert(result2.name === 'Deltek', 'Name should be Deltek');
-assert(result2.role === 'Pre-Placement Session', 'Role should be Pre-Placement Session');
+assert(result2.type === 'Preplacement Talk/Guest Talk', 'Type should be Preplacement Talk/Guest Talk');
 assert(result2.tier === 'DREAM', 'Tier should be DREAM');
+assert(result2.oaDate === '2026-09-25', 'Drive Date should be 2026-09-25 (not 2027)');
+assert(!result2.notes || !result2.notes.includes('Eligibility'), 'Notes should NOT contain eligibility');
+assert(!result2.notes || !result2.notes.includes('DEADLINE'), 'Notes should NOT contain deadline');
 
-// Test 3: Parse SentinelOne announcement correctly with stipend and role
+// Test 3: Parse SentinelOne announcement correctly with stipend and Type
 const sentinelMsg = `PLACEMENT DRIVE 2027
 
 Company: SentinelOne 
@@ -61,8 +64,9 @@ DEADLINE: 5.00 PM, 16/09/2026 (Today)`;
 const result3 = parseWhatsAppMessage(sentinelMsg);
 assert(result3 !== null, 'SentinelOne should be parsed');
 assert(result3.name === 'SentinelOne', 'Name should be SentinelOne');
-assert(result3.role === 'Software Engineer Intern, Technical Support Intern', 'Role should match JD');
+assert(result3.type.includes('intern + PBC(FTE)'), 'Type should contain intern + PBC(FTE)');
 assert(result3.tier === 'OPEN_DREAM', 'Tier should be OPEN_DREAM');
+assert(result3.oaDate === '2026-09-23', 'Drive Date should be 2026-09-23');
 
 // Test 4: Parse Samsung RI
 const samsungMsg = `*Company:* Samsung RI
@@ -78,9 +82,9 @@ const samsungMsg = `*Company:* Samsung RI
 const result4 = parseWhatsAppMessage(samsungMsg);
 assert(result4 !== null, 'Samsung RI should be parsed');
 assert(result4.name === 'Samsung RI', 'Name should be Samsung RI');
-assert(result4.role === 'Developer Intern', 'Role should be Developer Intern');
+assert(result4.type.includes('Internship+ PBC'), 'Type should contain Internship+ PBC');
 assert(result4.tier === 'OPEN_DREAM', 'Tier should be OPEN_DREAM');
 assert(result4.ctc.includes('26.8 LPA'), 'CTC should include 26.8 LPA');
 assert(result4.ctc.includes('75k  PM'), 'CTC should include 75k PM');
 
-console.log('✓ All whatsappParser unit tests passed successfully!');
+console.log('✓ All updated whatsappParser unit tests passed successfully!');

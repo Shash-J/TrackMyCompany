@@ -51,7 +51,8 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
 
   // Form Fields
   const [name, setName] = useState('');
-  const [role, setRole] = useState('Software Engineer');
+  const [type, setType] = useState('Full Time (FTE)');
+  const [role, setRole] = useState('');
   const [tier, setTier] = useState<TierCategory>('OPEN_DREAM');
   const [ctc, setCtc] = useState('');
   const [notes, setNotes] = useState('');
@@ -75,7 +76,8 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
     if (editCompany) {
       setMode('manual');
       setName(editCompany.name);
-      setRole(editCompany.role || 'Software Engineer');
+      setType(editCompany.type || editCompany.role || 'Full Time (FTE)');
+      setRole(editCompany.role || '');
       setTier(editCompany.tier || 'DREAM');
       setCtc(editCompany.ctc || '');
       setNotes(editCompany.notes || '');
@@ -100,7 +102,8 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setShowEditDetails(false);
 
       setName('');
-      setRole('Software Engineer');
+      setType('Full Time (FTE)');
+      setRole('');
       setTier('OPEN_DREAM');
       setCtc('');
       setNotes('');
@@ -134,11 +137,12 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
 
     // Auto-fill extracted values
     setName(parsed.name);
-    setRole(parsed.role);
+    setType(parsed.type);
+    setRole(parsed.role || '');
     setTier(parsed.tier);
     setCtc(parsed.ctc);
-    if (parsed.oaDate) setOaDate(parsed.oaDate);
-    if (parsed.notes) setNotes(parsed.notes);
+    setOaDate(parsed.oaDate || '');
+    setNotes(parsed.notes || '');
 
     setPasteError('');
     setShowEditDetails(false);
@@ -194,7 +198,8 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
     onSave(
       {
         name: name.trim(),
-        role: role.trim() || 'Software Engineer',
+        type: type.trim() || 'Full Time (FTE)',
+        role: role.trim() || undefined,
         tier,
         ctc: ctc.trim() || 'Not Disclosed',
         oaDate: oaDate ? oaDate : undefined,
@@ -274,7 +279,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                 <Sparkles className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <div className="leading-relaxed">
                   <span className="font-bold text-white block mb-0.5">Quick Auto-Fill:</span>
-                  Copy the full placement drive message from WhatsApp and paste it below. We'll automatically extract the company name, role, CTC, drive date, and eligibility!
+                  Copy the full placement drive message from WhatsApp and paste it below. We'll automatically extract the company name, type (Intern/FTE/PBC), CTC, and drive date!
                 </div>
               </div>
 
@@ -312,11 +317,9 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                   placeholder={`Paste the announcement here...
 e.g.
 *Company*: Microsoft
-*Type*: Open Dream
+*Type*: Open Dream, Internship+ PBC (FTE)
 *Stipend*: 1.25 lakhs PM
-*Drive Date*: 25th September
-*Eligibility*: BE in CSE, ISE, AIML...
-*DEADLINE*: 5.00 PM Today`}
+*Drive Date*: 25th September`}
                   className="w-full px-3.5 py-3 bg-[#0B0F19] border border-slate-700/80 rounded-2xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono resize-none leading-relaxed"
                   autoFocus
                 />
@@ -360,8 +363,8 @@ e.g.
                     <h3 className="text-base font-bold text-white leading-tight">
                       {name}
                     </h3>
-                    <p className="text-xs text-slate-300 mt-0.5">
-                      {role}
+                    <p className="text-xs text-indigo-300 font-medium mt-0.5">
+                      Type: <span className="text-white">{type}</span>
                     </p>
                   </div>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shrink-0">
@@ -414,11 +417,11 @@ e.g.
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[10px] font-semibold text-slate-300 mb-1">Role</label>
+                        <label className="block text-[10px] font-semibold text-slate-300 mb-1">Type (Intern, FTE, etc.)</label>
                         <input
                           type="text"
-                          value={role}
-                          onChange={(e) => setRole(e.target.value)}
+                          value={type}
+                          onChange={(e) => setType(e.target.value)}
                           className="w-full px-3 py-1.5 bg-[#131B2E] border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500"
                         />
                       </div>
@@ -598,7 +601,7 @@ e.g.
                 </div>
               )}
 
-              {/* Company Name & Role */}
+              {/* Company Name & Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-200 mb-1.5">
@@ -616,13 +619,13 @@ e.g.
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-                    Role / Job Profile
+                    Type (Intern, FTE, PBC, etc.)
                   </label>
                   <input
                     type="text"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    placeholder="e.g. Software Engineer"
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    placeholder="e.g. Intern + PBC (FTE) or FTE"
                     className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>

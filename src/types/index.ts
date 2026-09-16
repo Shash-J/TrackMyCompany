@@ -28,7 +28,8 @@ export type OARejectionReasonTag =
 export interface Company {
   id: string;
   name: string;
-  role: string;
+  type?: string; // Opportunity type: e.g. 'Intern + PBC (FTE)', 'FTE', 'Preplacement Talk', 'Hackathon'
+  role?: string;
   tier: TierCategory;
   ctc: string;
   applicationDeadline?: string;

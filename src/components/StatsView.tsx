@@ -518,7 +518,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
                       {company.name}
                     </h4>
                     <p className="text-[11px] text-slate-400 italic mt-0.5">
-                      {company.role || 'Software Engineer'}
+                      {company.type || company.role || 'Full Time (FTE)'}
                     </p>
                   </div>
 
