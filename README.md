@@ -5,11 +5,14 @@
 
 Built to replace annoying, messy Excel sheets with a high-performance web dashboard styled with the exact dark-mode aesthetic of [lastminuteplacementprep.in](https://www.lastminuteplacementprep.in/).
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-success?style=for-the-badge&logo=github)](https://shash-j.github.io/TrackMyCompany/)
 [![Open Source](https://img.shields.io/badge/Open%20Source-%E2%99%A5-indigo.svg)](https://github.com/Shash-J/TrackMyCompany)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Vite](https://img.shields.io/badge/Bundled%20with-Vite-646CFF.svg)](https://vitejs.dev/)
-[![React](https://img.shields.io/badge/Framework-React%2018-61DAFB.svg)](https://react.dev/)
+[![React](https://img.shields.io/badge/Framework-React%2019-61DAFB.svg)](https://react.dev/)
 [![TailwindCSS](https://img.shields.io/badge/Styled%20with-Tailwind%20CSS-38B2AC.svg)](https://tailwindcss.com/)
+
+**🌐 Live Website:** [https://shash-j.github.io/TrackMyCompany/](https://shash-j.github.io/TrackMyCompany/)
 
 ---
 
@@ -88,11 +91,24 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### Production Build
+```
+
+### Production Build & Free Deployment
 ```bash
 npm run build
 npm run preview
 ```
+
+#### Deploy to GitHub Pages (Automated)
+This repository includes a pre-configured GitHub Actions workflow in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
+1. Go to your GitHub repository: [https://github.com/Shash-J/TrackMyCompany](https://github.com/Shash-J/TrackMyCompany)
+2. Navigate to **Settings** ➡️ **Pages** (under Code and automation).
+3. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+4. Push your commits to `main`:
+   ```bash
+   git push origin main
+   ```
+5. GitHub will automatically build and publish your site at **https://shash-j.github.io/TrackMyCompany/** for free!
 
 ---
 
