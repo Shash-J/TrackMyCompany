@@ -14,6 +14,7 @@ export type RejectionReasonTag =
   | 'Not Interested in Role'
   | 'CGPA / Branch Ineligible'
   | 'Focusing on Other Companies'
+  | 'PBC'
   | 'Other';
 
 export type OAShortlistStatus = 'pending' | 'shortlisted' | 'not_shortlisted';

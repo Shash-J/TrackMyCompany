@@ -45,8 +45,8 @@ export const App: React.FC = () => {
   // Navigation: Exactly two tabs ('dashboard' | 'statistics')
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
 
-  // Dashboard Filter State
-  const [statusFilter, setStatusFilter] = useState<'all' | 'applied' | 'not_applied'>('all');
+  // Dashboard Filter State: Applied companies by default
+  const [statusFilter, setStatusFilter] = useState<'all' | 'applied' | 'not_applied'>('applied');
   const [searchQuery, setSearchQuery] = useState('');
   const [tierFilter, setTierFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<'date_desc' | 'name_asc' | 'oa_date'>('date_desc');
@@ -239,7 +239,7 @@ export const App: React.FC = () => {
   const resetFilters = () => {
     setSearchQuery('');
     setTierFilter('ALL');
-    setStatusFilter('all');
+    setStatusFilter('applied');
     setSortBy('date_desc');
   };
 
@@ -373,18 +373,8 @@ export const App: React.FC = () => {
             {/* COMPANY MANAGEMENT: Minimal Controls & Filter Chips */}
             <div className="bg-[#131B2E] border border-slate-800 p-3 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-md shadow-black/20">
               
-              {/* Status Filter Chips */}
+              {/* Status Filter Chips: Applied by default as requested */}
               <div className="flex items-center gap-1 bg-[#0B0F19] p-1 rounded-xl border border-slate-800/80 self-start">
-                <button
-                  onClick={() => setStatusFilter('all')}
-                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-                    statusFilter === 'all'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  All ({companies.length})
-                </button>
                 <button
                   onClick={() => setStatusFilter('applied')}
                   className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
@@ -394,6 +384,16 @@ export const App: React.FC = () => {
                   }`}
                 >
                   Applied ({stats.totalApplied})
+                </button>
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                    statusFilter === 'all'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  All ({companies.length})
                 </button>
                 <button
                   onClick={() => setStatusFilter('not_applied')}
@@ -505,16 +505,32 @@ export const App: React.FC = () => {
                   </div>
                 ) : (
                   <div className="max-w-sm mx-auto space-y-2">
-                    <h3 className="text-sm font-semibold text-white">No companies match your filters</h3>
+                    <h3 className="text-sm font-semibold text-white">
+                      {statusFilter === 'applied' && stats.totalApplied === 0
+                        ? 'No Applied Companies Yet'
+                        : 'No companies match your filters'}
+                    </h3>
                     <p className="text-xs text-slate-400">
-                      Try clearing the search query or status filter.
+                      {statusFilter === 'applied' && stats.totalApplied === 0
+                        ? 'Mark companies as applied or switch to "All" to view all records.'
+                        : 'Try clearing the search query or status filter.'}
                     </p>
-                    <button
-                      onClick={resetFilters}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 transition-colors"
-                    >
-                      Clear Filters
-                    </button>
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      {statusFilter === 'applied' && stats.totalApplied === 0 && (
+                        <button
+                          onClick={() => setStatusFilter('all')}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors"
+                        >
+                          View All ({companies.length})
+                        </button>
+                      )}
+                      <button
+                        onClick={resetFilters}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 transition-colors"
+                      >
+                        Reset Filters
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

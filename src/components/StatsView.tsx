@@ -75,6 +75,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
     'CGPA / Branch Ineligible': '#F97316',
     'Not Interested in Role': '#8B5CF6',
     'Focusing on Other Companies': '#EC4899',
+    'PBC': '#3B82F6',
     'Other': '#64748B',
   };
 
@@ -229,7 +230,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
 
       </div>
 
-      {/* NEW SECTION: COMPANIES IN ORDER OF ARRIVAL / ENTRY */}
+      {/* SECTION: ALL COMPANIES */}
       <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-6 shadow-lg shadow-black/20">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800">
           <div className="flex items-center gap-3">
@@ -238,15 +239,15 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold text-white">
-                Companies in Order of Arrival / Entry
+                All Companies
               </h3>
               <p className="text-xs text-slate-400">
-                Chronological placement record of all {chronologicalCompanies.length} companies as they arrived on campus
+                Placement record of all {chronologicalCompanies.length} companies in order of arrival
               </p>
             </div>
           </div>
           <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-            Chronological Log
+            All Companies
           </span>
         </div>
 

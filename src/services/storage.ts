@@ -10,6 +10,7 @@ export const REJECTION_PRESET_TAGS: RejectionReasonTag[] = [
   'Not Interested in Role',
   'CGPA / Branch Ineligible',
   'Focusing on Other Companies',
+  'PBC',
   'Other'
 ];
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Building2, Calendar, Link as LinkIcon, DollarSign, Check, Award, AlertCircle, Tag } from 'lucide-react';
+import { X, Building2, Calendar, DollarSign, Check, Award, AlertCircle, Tag } from 'lucide-react';
 import type { Company, TierCategory, ApplicationStatus, RejectionReasonTag, PriorityLevel, OAShortlistStatus } from '../types';
 import { REJECTION_PRESET_TAGS } from '../services/storage';
 
@@ -23,8 +23,6 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
   const [tier, setTier] = useState<TierCategory>('OPEN_DREAM');
   const [ctc, setCtc] = useState('');
   const [businessModel, setBusinessModel] = useState('');
-  const [formLink, setFormLink] = useState('');
-  const [applicationDeadline, setApplicationDeadline] = useState('');
   const [notes, setNotes] = useState('');
 
   const [status, setStatus] = useState<ApplicationStatus>(defaultStatus);
@@ -48,14 +46,12 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setTier(editCompany.tier || 'DREAM');
       setCtc(editCompany.ctc || '');
       setBusinessModel(editCompany.businessModel || '');
-      setFormLink(editCompany.formLink || '');
-      setApplicationDeadline(editCompany.applicationDeadline || '');
       setNotes(editCompany.notes || '');
       setStatus(editCompany.status);
 
       setFormSubmitted(editCompany.formSubmitted ?? true);
       setPriority(editCompany.priority || 'High');
-      setOaDate(editCompany.oaDate || '');
+      setOaDate(editCompany.oaDate || editCompany.applicationDeadline || '');
       setOaStatus(editCompany.oaStatus || 'pending');
 
       setRejectionReasonTag(editCompany.rejectionReasonTag || 'Low CTC');
@@ -67,8 +63,6 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setTier('OPEN_DREAM');
       setCtc('');
       setBusinessModel('');
-      setFormLink('');
-      setApplicationDeadline('');
       setNotes('');
       setStatus(defaultStatus);
       setFormSubmitted(true);
@@ -97,15 +91,15 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
         tier,
         ctc: ctc.trim() || 'Not Disclosed',
         businessModel: businessModel.trim() || undefined,
-        formLink: formLink.trim() || undefined,
-        applicationDeadline: applicationDeadline || undefined,
+        formLink: editCompany?.formLink || undefined,
+        applicationDeadline: oaDate || editCompany?.applicationDeadline || undefined,
         notes: notes.trim() || undefined,
         status,
         // Applied fields
         formSubmitted: status === 'applied' ? formSubmitted : undefined,
         formSubmittedDate: status === 'applied' ? (editCompany?.formSubmittedDate || new Date().toISOString()) : undefined,
         priority: status === 'applied' ? priority : undefined,
-        oaDate: status === 'applied' && oaDate ? oaDate : undefined,
+        oaDate: oaDate ? oaDate : undefined,
         oaStatus: status === 'applied' ? oaStatus : undefined,
         // Not applied fields
         rejectionReasonTag: status === 'not_applied' ? rejectionReasonTag : undefined,
@@ -168,8 +162,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. PhonePe, SAP, Oracle, Cisco"
-                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
 
@@ -181,8 +174,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                 type="text"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                placeholder="e.g. SDE, Data Analyst, Member Tech Staff"
-                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -215,8 +207,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                 type="text"
                 value={ctc}
                 onChange={(e) => setCtc(e.target.value)}
-                placeholder="e.g. 14 LPA, 8.5 + 1L Bonus, ₹40k/mo"
-                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -286,35 +277,20 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                 </label>
               </div>
 
-              {/* Priority & OA Date */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Priority
-                  </label>
-                  <select
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value as PriorityLevel)}
-                    className="w-full px-3 py-2 bg-[#0B0F19] border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="High">P1 - High Priority</option>
-                    <option value="Medium">P2 - Medium Priority</option>
-                    <option value="Low">P3 - Low Priority</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                    <span>OA Drive Date</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={oaDate}
-                    onChange={(e) => setOaDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#0B0F19] border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
+              {/* Priority */}
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Priority
+                </label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as PriorityLevel)}
+                  className="w-full px-3 py-2 bg-[#0B0F19] border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="High">P1 - High Priority</option>
+                  <option value="Medium">P2 - Medium Priority</option>
+                  <option value="Low">P3 - Low Priority</option>
+                </select>
               </div>
 
               {/* OA Shortlist Status */}
@@ -397,53 +373,36 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                   rows={2}
                   value={customReasonNote}
                   onChange={(e) => setCustomReasonNote(e.target.value)}
-                  placeholder="e.g. Relocation to Gurugram not preferred, or strictly preparing for product firms..."
-                  className="w-full px-3.5 py-2 bg-[#0B0F19] border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-rose-500"
+                  className="w-full px-3.5 py-2 bg-[#0B0F19] border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-rose-500"
                 />
               </div>
             </div>
           )}
 
-          {/* Google Form Link & Deadline */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-200 mb-1.5 flex items-center gap-1">
-                <LinkIcon className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Google Form / Notification Link</span>
-              </label>
-              <input
-                type="url"
-                value={formLink}
-                onChange={(e) => setFormLink(e.target.value)}
-                placeholder="https://forms.gle/..."
-                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-                Application Deadline
-              </label>
-              <input
-                type="date"
-                value={applicationDeadline}
-                onChange={(e) => setApplicationDeadline(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
-              />
-            </div>
+          {/* Drive Date */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-200 mb-1.5 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+              <span>Drive Date</span>
+            </label>
+            <input
+              type="date"
+              value={oaDate}
+              onChange={(e) => setOaDate(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
+            />
           </div>
 
           {/* Notes */}
           <div>
             <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-              Personal Placement Notes / Preparation Focus
+              Notes
             </label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Focus on Trees, Graphs, DBMS SQL queries, and System Design basics..."
-              className="w-full px-3.5 py-2 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3.5 py-2 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
             />
           </div>
 

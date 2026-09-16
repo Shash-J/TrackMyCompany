@@ -313,8 +313,10 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
               rejectionReasonTag = 'CGPA / Branch Ineligible';
             } else if (lowerReason.includes('role') || lowerReason.includes('profile')) {
               rejectionReasonTag = 'Not Interested in Role';
-            } else if (lowerReason.includes('focus') || lowerReason.includes('other')) {
+            } else if (lowerReason.includes('focus') || lowerReason.includes('other comp')) {
               rejectionReasonTag = 'Focusing on Other Companies';
+            } else if (lowerReason.includes('pbc') || lowerReason.includes('product based')) {
+              rejectionReasonTag = 'PBC';
             } else {
               rejectionReasonTag = 'Other';
             }

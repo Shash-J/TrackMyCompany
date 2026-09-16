@@ -105,8 +105,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 setName(e.target.value);
                 if (error) setError('');
               }}
-              placeholder="e.g. Rahul / Alex"
-              className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+              className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
             />
             {error && <p className="text-xs text-rose-400 mt-1 font-medium">{error}</p>}
           </div>
@@ -121,8 +120,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 type="text"
                 value={branch}
                 onChange={(e) => setBranch(e.target.value)}
-                placeholder="e.g. CSE, ISE, ECE"
-                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               />
             </div>
 
@@ -135,8 +133,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 type="text"
                 value={batch}
                 onChange={(e) => setBatch(e.target.value)}
-                placeholder="e.g. 2026"
-                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                className="w-full px-3.5 py-2.5 bg-[#0B0F19] border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               />
             </div>
           </div>
