@@ -267,10 +267,10 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#070A12] text-slate-100 flex flex-col font-sans antialiased">
       
-      {/* Mobile App Container Shell */}
-      <div className="w-full max-w-md mx-auto min-h-screen bg-[#0B0F19] flex flex-col relative shadow-2xl sm:border-x sm:border-slate-800/80">
+      {/* Responsive App Container Shell */}
+      <div className="w-full max-w-md md:max-w-5xl lg:max-w-6xl mx-auto min-h-screen bg-[#0B0F19] flex flex-col relative shadow-2xl sm:border-x sm:border-slate-800/80">
         
-        {/* Top Mobile App Bar */}
+        {/* Top App Bar */}
         <Navbar
           currentTab={currentTab}
           onSelectTab={(tab) => setCurrentTab(tab)}
@@ -284,7 +284,7 @@ export const App: React.FC = () => {
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 w-full px-3.5 pt-3.5 pb-28">
+        <main className="flex-1 w-full px-3.5 sm:px-6 lg:px-8 pt-4 pb-28 md:pb-12">
           
           {/* VIEW 1: MAIN DASHBOARD */}
           {currentTab === 'dashboard' && (
@@ -315,7 +315,7 @@ export const App: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                     {upcomingDrives.map((drive) => {
                       const badge = getDaysRemainingBadge(drive.oaDate!);
                       return (
@@ -413,62 +413,64 @@ export const App: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Search Bar */}
-                <div className="relative w-full">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search company, CTC, reason..."
-                    className="w-full pl-8 pr-3 py-2 bg-[#0B0F19] border border-slate-700/70 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
-                  />
-                </div>
-
-                {/* Filter & Sort Row */}
-                <div className="flex items-center gap-1.5">
-                  <select
-                    value={tierFilter}
-                    onChange={(e) => setTierFilter(e.target.value)}
-                    className="flex-1 px-2.5 py-1.5 bg-[#0B0F19] border border-slate-700/70 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="ALL">All Tiers</option>
-                    <option value="OPEN_DREAM">Open Dream (≥12 LPA)</option>
-                    <option value="DREAM">Dream (&lt;12 LPA)</option>
-                    <option value="MASS">Mass / Regular</option>
-                    <option value="INTERN_ONLY">Internship</option>
-                    <option value="OFF_CAMPUS">Off-Campus</option>
-                  </select>
-
-                  <div className="flex items-center gap-1 bg-[#0B0F19] border border-slate-700/70 rounded-xl px-2 py-0.5 shrink-0">
-                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value as any)}
-                      className="bg-transparent text-xs text-slate-300 focus:outline-none pr-1 py-1"
-                    >
-                      <option value="date_desc" className="bg-[#0B0F19]">Newest</option>
-                      <option value="name_asc" className="bg-[#0B0F19]">A - Z</option>
-                      <option value="oa_date" className="bg-[#0B0F19]">OA Date</option>
-                    </select>
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  {/* Search Bar */}
+                  <div className="relative flex-1 w-full">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search company, CTC, reason..."
+                      className="w-full pl-8 pr-3 py-2 bg-[#0B0F19] border border-slate-700/70 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
+                    />
                   </div>
 
-                  {(searchQuery || tierFilter !== 'ALL' || statusFilter !== 'applied') && (
-                    <button
-                      onClick={resetFilters}
-                      title="Reset filters"
-                      className="p-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 rounded-xl transition-colors shrink-0"
+                  {/* Filter & Sort Row */}
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                    <select
+                      value={tierFilter}
+                      onChange={(e) => setTierFilter(e.target.value)}
+                      className="flex-1 sm:w-44 px-2.5 py-2 bg-[#0B0F19] border border-slate-700/70 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
                     >
-                      <RotateCcw className="w-3 h-3" />
-                    </button>
-                  )}
+                      <option value="ALL">All Tiers</option>
+                      <option value="OPEN_DREAM">Open Dream (≥12 LPA)</option>
+                      <option value="DREAM">Dream (&lt;12 LPA)</option>
+                      <option value="MASS">Mass / Regular</option>
+                      <option value="INTERN_ONLY">Internship</option>
+                      <option value="OFF_CAMPUS">Off-Campus</option>
+                    </select>
+
+                    <div className="flex items-center gap-1 bg-[#0B0F19] border border-slate-700/70 rounded-xl px-2.5 py-1 shrink-0">
+                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as any)}
+                        className="bg-transparent text-xs text-slate-300 focus:outline-none pr-1 py-1"
+                      >
+                        <option value="date_desc" className="bg-[#0B0F19]">Newest</option>
+                        <option value="name_asc" className="bg-[#0B0F19]">A - Z</option>
+                        <option value="oa_date" className="bg-[#0B0F19]">OA Date</option>
+                      </select>
+                    </div>
+
+                    {(searchQuery || tierFilter !== 'ALL' || statusFilter !== 'applied') && (
+                      <button
+                        onClick={resetFilters}
+                        title="Reset filters"
+                        className="p-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 rounded-xl transition-colors shrink-0"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
               </div>
 
-              {/* Companies Feed (Single Column for Mobile) */}
+              {/* Companies Feed */}
               {filteredCompanies.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
                   {filteredCompanies.map((company) => (
                     <CompanyCard
                       key={company.id}

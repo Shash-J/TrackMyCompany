@@ -34,7 +34,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const isStatsActive = currentTab === 'statistics';
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 max-w-md mx-auto bg-[#0E1526]/95 backdrop-blur-xl border-t border-slate-800/90 px-3 py-1.5 flex items-center justify-around shadow-2xl shadow-black/80 pb-safe">
+    <nav className="fixed bottom-0 inset-x-0 z-40 max-w-md mx-auto bg-[#0E1526]/95 backdrop-blur-xl border-t border-slate-800/90 px-3 py-1.5 flex md:hidden items-center justify-around shadow-2xl shadow-black/80 pb-safe">
       
       {/* Tab 1: Applied */}
       <button

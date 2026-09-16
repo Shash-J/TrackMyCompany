@@ -163,8 +163,8 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
         </div>
       </div>
 
-      {/* ROUND PIE CHARTS (Single Column on Mobile) */}
-      <div className="space-y-4">
+      {/* ROUND PIE CHARTS */}
+      <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-5">
         
         {/* PIE 1: APPLICATION STATUS BREAKDOWN */}
         <PieChart
@@ -256,7 +256,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
             </p>
           </div>
         ) : (
-          <div className="mt-3.5 space-y-2.5">
+          <div className="mt-3.5 space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
             {chronologicalCompanies.map((company, index) => {
               const arrivalNum = index + 1;
               const dateAdded = new Date(company.createdAt).toLocaleDateString(undefined, {

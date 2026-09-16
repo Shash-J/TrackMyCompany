@@ -13,10 +13,10 @@ export const Footer: React.FC = () => {
 
   return (
     <footer className="mt-10 mb-8 border-t border-slate-800/80 bg-[#0B0F19] text-slate-400 text-xs">
-      <div className="max-w-md mx-auto px-3.5 py-5 space-y-3.5">
+      <div className="max-w-md md:max-w-5xl lg:max-w-6xl mx-auto px-3.5 sm:px-6 lg:px-8 py-6 space-y-4">
         
         {/* Unified Single Footer Bar */}
-        <div className="flex flex-col items-center justify-center text-center gap-3">
+        <div className="flex flex-col md:flex-row items-center justify-between text-center md:text-left gap-4">
           
           {/* Left: Brand Identity */}
           <div className="flex items-center gap-2">
