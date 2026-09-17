@@ -24,10 +24,31 @@ export const PieChart: React.FC<PieChartProps> = ({
   emptyMessage = 'No data to display',
   headerAction,
 }) => {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const validItems = items.filter((item) => item.value > 0);
   const totalValue = validItems.reduce((acc, item) => acc + item.value, 0);
+
+  // Active slice is either explicitly selected, or hovered when nothing is selected
+  const activeIndex = selectedIndex !== null ? selectedIndex : hoveredIndex;
+
+  const handleItemClick = (index: number) => {
+    setHoveredIndex(null);
+    setSelectedIndex((prev) => (prev === index ? null : index));
+  };
+
+  const handleItemMouseEnter = (index: number) => {
+    if (selectedIndex === null) {
+      setHoveredIndex(index);
+    }
+  };
+
+  const handleItemMouseLeave = () => {
+    if (selectedIndex === null) {
+      setHoveredIndex(null);
+    }
+  };
 
   // SVG Coordinates calculation for pie slices
   const radius = 80;
@@ -127,36 +148,42 @@ export const PieChart: React.FC<PieChartProps> = ({
                 className="w-full h-full transform transition-transform"
               >
                 {slices.map((slice) => {
-                  const isHovered = hoveredIndex === slice.index;
+                  const isActive = activeIndex === slice.index;
                   return (
                     <path
                       key={slice.index}
                       d={slice.pathData}
                       fill={slice.item.color}
                       fillRule="evenodd"
-                      className="cursor-pointer transition-all duration-200 hover:opacity-90 active:opacity-80"
+                      className="cursor-pointer transition-transform duration-150 hover:opacity-95 active:opacity-90"
                       style={{
-                        transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                        transform: isActive ? 'scale(1.04)' : 'scale(1)',
                         transformOrigin: `${centerX}px ${centerY}px`,
-                        filter: isHovered ? 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.5))' : 'none',
+                        filter: isActive ? 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.5))' : 'none',
                       }}
-                      onClick={() => setHoveredIndex(hoveredIndex === slice.index ? null : slice.index)}
-                      onMouseEnter={() => setHoveredIndex(slice.index)}
-                      onMouseLeave={() => setHoveredIndex(null)}
+                      onClick={() => handleItemClick(slice.index)}
+                      onMouseEnter={() => handleItemMouseEnter(slice.index)}
+                      onMouseLeave={handleItemMouseLeave}
                     />
                   );
                 })}
               </svg>
 
               {/* Center Donut Hole Text */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                {hoveredIndex !== null && slices[hoveredIndex] ? (
+              <div 
+                onClick={() => selectedIndex !== null && setSelectedIndex(null)}
+                className={`absolute inset-0 flex flex-col items-center justify-center text-center select-none ${
+                  selectedIndex !== null ? 'cursor-pointer' : 'pointer-events-none'
+                }`}
+                title={selectedIndex !== null ? 'Click to show total' : undefined}
+              >
+                {activeIndex !== null && slices[activeIndex] ? (
                   <>
                     <span className="text-xl font-extrabold text-white font-mono leading-none">
-                      {slices[hoveredIndex].percentage}%
+                      {slices[activeIndex].percentage}%
                     </span>
                     <span className="text-[10px] text-slate-400 font-medium line-clamp-1 px-1">
-                      {slices[hoveredIndex].item.value} {slices[hoveredIndex].item.value === 1 ? 'co.' : 'cos.'}
+                      {slices[activeIndex].item.value} {slices[activeIndex].item.value === 1 ? 'co.' : 'cos.'}
                     </span>
                   </>
                 ) : (
@@ -176,15 +203,17 @@ export const PieChart: React.FC<PieChartProps> = ({
           {/* Color-Coded Legend: Full width with spacious, un-cramped rows */}
           <div className="w-full mt-3 pt-2.5 border-t border-slate-800/60 flex-1 flex flex-col justify-start space-y-1">
             {slices.map((slice) => {
-              const isHovered = hoveredIndex === slice.index;
+              const isActive = activeIndex === slice.index;
               return (
                 <div
                   key={slice.index}
-                  onClick={() => setHoveredIndex(hoveredIndex === slice.index ? null : slice.index)}
-                  onMouseEnter={() => setHoveredIndex(slice.index)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                  className={`flex items-center justify-between px-2 py-1.5 rounded-lg transition-all cursor-pointer select-none active:scale-[0.99] ${
-                    isHovered ? 'bg-[#0B0F19] border border-slate-700' : 'hover:bg-[#0B0F19]/60'
+                  onClick={() => handleItemClick(slice.index)}
+                  onMouseEnter={() => handleItemMouseEnter(slice.index)}
+                  onMouseLeave={handleItemMouseLeave}
+                  className={`flex items-center justify-between px-2 py-1.5 rounded-lg border cursor-pointer select-none transition-transform duration-75 active:scale-[0.99] ${
+                    isActive
+                      ? 'bg-[#0B0F19] border-slate-700 shadow-xs'
+                      : 'border-transparent hover:bg-[#0B0F19]/60'
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
@@ -192,16 +221,18 @@ export const PieChart: React.FC<PieChartProps> = ({
                       className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: slice.item.color }}
                     />
-                    <span className="text-xs font-semibold text-slate-200 truncate">
+                    <span className={`text-xs truncate ${isActive ? 'font-bold text-white' : 'font-semibold text-slate-200'}`}>
                       {slice.item.label}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-1.5 font-mono shrink-0">
-                    <span className="text-xs text-slate-400">
+                    <span className={`text-xs ${isActive ? 'text-slate-300 font-bold' : 'text-slate-400'}`}>
                       {slice.item.value}
                     </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      isActive ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/50' : 'bg-slate-800 text-slate-300'
+                    }`}>
                       {slice.percentage}%
                     </span>
                   </div>
