@@ -88,6 +88,46 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // Handle mobile / browser back button navigation & URL routing
+  useEffect(() => {
+    // Initialize base history state so mobile back button can safely navigate back to home
+    if (!window.history.state) {
+      window.history.replaceState({ page: 'home' }, '', window.location.pathname + window.location.search);
+    }
+
+    // Initialize from URL hash on load
+    const initialHash = window.location.hash;
+    if (initialHash === '#stats') {
+      setCurrentTab('statistics');
+    } else if (initialHash === '#add-company') {
+      setEditCompany(null);
+      setDefaultStatusForModal('applied');
+      setIsCompanyModalOpen(true);
+    }
+
+    const handlePopState = () => {
+      const hash = window.location.hash;
+
+      // Close all modals when mobile/browser back is triggered
+      setIsCompanyModalOpen(false);
+      setIsProfileModalOpen(false);
+      setIsImportExportModalOpen(false);
+      setIsAboutModalOpen(false);
+
+      // Handle tab switching: ensure home page (dashboard) unless user is on #stats
+      if (hash === '#stats') {
+        setCurrentTab('statistics');
+      } else {
+        setCurrentTab('dashboard');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
   // Compute Statistics
   const stats = useMemo(() => calculateStatistics(companies), [companies]);
 
@@ -263,16 +303,82 @@ export const App: React.FC = () => {
     setCompanies(merged);
   };
 
-  const openAddModalWithStatus = (status: ApplicationStatus = 'applied') => {
+  // Navigation Tab Handler with browser history support
+  const handleSelectTab = (tab: NavTab) => {
+    if (tab === currentTab) return;
+    if (tab === 'statistics') {
+      window.history.pushState({ tab: 'statistics' }, '', '#stats');
+      setCurrentTab('statistics');
+    } else {
+      if (window.location.hash === '#stats') {
+        window.history.back();
+      } else {
+        window.history.pushState({ tab: 'dashboard' }, '', window.location.pathname + window.location.search);
+        setCurrentTab('dashboard');
+      }
+    }
+  };
+
+  // Company Modal Handlers (Add & Edit) with history pushState
+  const openCompanyModalWithStatus = (status: ApplicationStatus = 'applied') => {
     setEditCompany(null);
     setDefaultStatusForModal(status);
     setIsCompanyModalOpen(true);
+    window.history.pushState({ modal: 'company' }, '', '#add-company');
   };
 
-  const openEditModal = (company: Company) => {
+  const openEditCompanyModal = (company: Company) => {
     setEditCompany(company);
     setDefaultStatusForModal(company.status);
     setIsCompanyModalOpen(true);
+    window.history.pushState({ modal: 'company' }, '', '#edit-company');
+  };
+
+  const closeCompanyModal = () => {
+    setIsCompanyModalOpen(false);
+    if (window.location.hash === '#add-company' || window.location.hash === '#edit-company') {
+      window.history.back();
+    }
+  };
+
+  // Profile Modal Handlers
+  const openProfileModal = () => {
+    setIsProfileModalOpen(true);
+    window.history.pushState({ modal: 'profile' }, '', '#profile');
+  };
+
+  const closeProfileModal = () => {
+    setIsProfileModalOpen(false);
+    if (window.location.hash === '#profile') {
+      window.history.back();
+    }
+  };
+
+  // Import/Export Modal Handlers
+  const openImportExportModal = (initialTab: 'import' | 'export' | 'backup' = 'export') => {
+    setImportExportInitialTab(initialTab);
+    setIsImportExportModalOpen(true);
+    window.history.pushState({ modal: 'excel' }, '', '#excel');
+  };
+
+  const closeImportExportModal = () => {
+    setIsImportExportModalOpen(false);
+    if (window.location.hash === '#excel') {
+      window.history.back();
+    }
+  };
+
+  // About Modal Handlers
+  const openAboutModal = () => {
+    setIsAboutModalOpen(true);
+    window.history.pushState({ modal: 'about' }, '', '#about');
+  };
+
+  const closeAboutModal = () => {
+    setIsAboutModalOpen(false);
+    if (window.location.hash === '#about') {
+      window.history.back();
+    }
   };
 
   // Filtered companies for the Dashboard: Only search filter and applied vs skipped
@@ -332,15 +438,12 @@ export const App: React.FC = () => {
         {/* Top App Bar */}
         <Navbar
           currentTab={currentTab}
-          onSelectTab={(tab) => setCurrentTab(tab)}
+          onSelectTab={handleSelectTab}
           profile={profile}
-          onOpenProfile={() => setIsProfileModalOpen(true)}
-          onOpenAddModal={() => openAddModalWithStatus(statusFilter === 'not_applied' ? 'not_applied' : 'applied')}
-          onOpenImportExport={() => {
-            setImportExportInitialTab('export');
-            setIsImportExportModalOpen(true);
-          }}
-          onOpenAbout={() => setIsAboutModalOpen(true)}
+          onOpenProfile={openProfileModal}
+          onOpenAddModal={() => openCompanyModalWithStatus(statusFilter === 'not_applied' ? 'not_applied' : 'applied')}
+          onOpenImportExport={() => openImportExportModal('export')}
+          onOpenAbout={openAboutModal}
         />
 
         {/* Main Content Area */}
@@ -417,7 +520,7 @@ export const App: React.FC = () => {
                               )}
 
                               <button
-                                onClick={() => openEditModal(drive)}
+                                onClick={() => openEditCompanyModal(drive)}
                                 className="text-[10px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 border border-slate-700 active:scale-95"
                               >
                                 Edit
@@ -491,7 +594,7 @@ export const App: React.FC = () => {
                       <CompanyCard
                         key={company.id}
                         company={company}
-                        onEdit={openEditModal}
+                        onEdit={openEditCompanyModal}
                         onDelete={handleDeleteCompany}
                         onQuickStatusChange={handleQuickStatusChange}
                         onUpdateOAStatus={handleUpdateOAStatus}
@@ -521,7 +624,7 @@ export const App: React.FC = () => {
                       </p>
                       <div className="flex items-center justify-center gap-2 pt-1">
                         <button
-                          onClick={() => openAddModalWithStatus('applied')}
+                          onClick={() => openCompanyModalWithStatus('applied')}
                           className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -529,7 +632,7 @@ export const App: React.FC = () => {
                         </button>
 
                         <button
-                          onClick={() => setIsImportExportModalOpen(true)}
+                          onClick={() => openImportExportModal('import')}
                           className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium rounded-xl transition-colors flex items-center gap-1.5"
                         >
                           <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
@@ -587,14 +690,11 @@ export const App: React.FC = () => {
         {/* Bottom Navigation Bar for Mobile */}
         <MobileBottomNav
           currentTab={currentTab}
-          onSelectTab={(tab) => setCurrentTab(tab)}
+          onSelectTab={handleSelectTab}
           statusFilter={statusFilter}
           onSelectStatusFilter={(status) => setStatusFilter(status)}
-          onOpenAddModal={() => openAddModalWithStatus(statusFilter === 'not_applied' ? 'not_applied' : 'applied')}
-          onOpenImportExport={() => {
-            setImportExportInitialTab('export');
-            setIsImportExportModalOpen(true);
-          }}
+          onOpenAddModal={() => openCompanyModalWithStatus(statusFilter === 'not_applied' ? 'not_applied' : 'applied')}
+          onOpenImportExport={() => openImportExportModal('export')}
           appliedCount={stats.totalApplied}
           skippedCount={stats.totalNotApplied}
         />
@@ -604,19 +704,19 @@ export const App: React.FC = () => {
       {/* Modals */}
       <ProfileModal
         isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
+        onClose={closeProfileModal}
         currentProfile={profile}
         onSave={handleSaveProfile}
         isFirstTime={!profile || !profile.name}
         onImportClick={() => {
-          setImportExportInitialTab('import');
-          setIsImportExportModalOpen(true);
+          closeProfileModal();
+          openImportExportModal('import');
         }}
       />
 
       <CompanyModal
         isOpen={isCompanyModalOpen}
-        onClose={() => setIsCompanyModalOpen(false)}
+        onClose={closeCompanyModal}
         onSave={handleSaveCompany}
         editCompany={editCompany}
         defaultStatus={defaultStatusForModal}
@@ -625,7 +725,7 @@ export const App: React.FC = () => {
       <ImportExportModal
         key={importExportInitialTab}
         isOpen={isImportExportModalOpen}
-        onClose={() => setIsImportExportModalOpen(false)}
+        onClose={closeImportExportModal}
         companies={companies}
         profile={profile}
         initialTab={importExportInitialTab}
@@ -634,7 +734,7 @@ export const App: React.FC = () => {
 
       <AboutModal
         isOpen={isAboutModalOpen}
-        onClose={() => setIsAboutModalOpen(false)}
+        onClose={closeAboutModal}
       />
 
     </div>
