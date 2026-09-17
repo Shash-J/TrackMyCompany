@@ -39,6 +39,7 @@ import { ProfileModal } from './components/ProfileModal';
 import { StatsView } from './components/StatsView';
 import { ImportExportModal } from './components/ImportExportModal';
 import { AboutModal } from './components/AboutModal';
+import { InstallPromptModal } from './components/InstallPromptModal';
 import { Footer } from './components/Footer';
 
 export const App: React.FC = () => {
@@ -59,6 +60,8 @@ export const App: React.FC = () => {
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
+  const [isInstallPromptOpen, setIsInstallPromptOpen] = useState(false);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [importExportInitialTab, setImportExportInitialTab] = useState<'import' | 'export' | 'backup'>('export');
   const [editCompany, setEditCompany] = useState<Company | null>(null);
   const [defaultStatusForModal, setDefaultStatusForModal] = useState<ApplicationStatus>('applied');
@@ -121,6 +124,41 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // Handle PWA installation prompt & daily trigger
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Check if running in standalone mode (already installed as PWA)
+    const isStandalone = 
+      (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || 
+      (typeof navigator !== 'undefined' && (navigator as any).standalone === true);
+
+    if (!isStandalone) {
+      const today = new Date().toISOString().split('T')[0];
+      const lastShown = localStorage.getItem('track_my_company_last_install_prompt_date');
+      if (lastShown !== today) {
+        // Show after brief initial delay
+        const timer = setTimeout(() => {
+          setIsInstallPromptOpen(true);
+          localStorage.setItem('track_my_company_last_install_prompt_date', today);
+        }, 2200);
+        return () => {
+          clearTimeout(timer);
+          window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        };
+      }
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
   // Handle mobile / browser back button navigation & URL routing
   useEffect(() => {
     // Initialize base history state so mobile back button can safely navigate back to home
@@ -146,6 +184,7 @@ export const App: React.FC = () => {
       setIsProfileModalOpen(false);
       setIsImportExportModalOpen(false);
       setIsAboutModalOpen(false);
+      setIsInstallPromptOpen(false);
 
       // Handle tab switching: ensure home page (dashboard) unless user is on #stats
       if (hash === '#stats') {
@@ -208,6 +247,16 @@ export const App: React.FC = () => {
       await addCompany(data);
       const fresh = await getCompanies();
       setCompanies(fresh);
+
+      // Trigger install prompt every time they enter a new company (if not running as installed PWA)
+      const isStandalone = 
+        (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || 
+        (typeof navigator !== 'undefined' && (navigator as any).standalone === true);
+      if (!isStandalone) {
+        setTimeout(() => {
+          setIsInstallPromptOpen(true);
+        }, 700);
+      }
     }
   };
 
@@ -815,6 +864,12 @@ export const App: React.FC = () => {
       <AboutModal
         isOpen={isAboutModalOpen}
         onClose={closeAboutModal}
+      />
+
+      <InstallPromptModal
+        isOpen={isInstallPromptOpen}
+        onClose={() => setIsInstallPromptOpen(false)}
+        deferredPrompt={deferredInstallPrompt}
       />
 
     </div>
