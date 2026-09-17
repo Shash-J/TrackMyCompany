@@ -48,6 +48,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
   const [rawMessage, setRawMessage] = useState('');
   const [pasteError, setPasteError] = useState('');
   const [showEditDetails, setShowEditDetails] = useState(false);
+  const [showQuickAutoFillInfo, setShowQuickAutoFillInfo] = useState(false);
 
   // Form Fields
   const [name, setName] = useState('');
@@ -100,6 +101,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setRawMessage('');
       setPasteError('');
       setShowEditDetails(false);
+      setShowQuickAutoFillInfo(false);
 
       setName('');
       setType('Full Time (FTE)');
@@ -274,13 +276,32 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
           <div className="flex flex-col flex-1 overflow-hidden">
             <div className="p-4 space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
               
-              {/* Instructions Pill */}
-              <div className="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/30 text-xs text-indigo-200 flex items-start gap-2.5">
-                <Sparkles className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                <div className="leading-relaxed">
-                  <span className="font-bold text-white block mb-0.5">Quick Auto-Fill:</span>
-                  Copy the full placement drive message from WhatsApp and paste it below. We'll automatically extract the company name, type (Intern/FTE/PBC), CTC, and drive date!
-                </div>
+              {/* Collapsible Quick Auto-Fill Info */}
+              <div className="rounded-xl bg-indigo-950/30 border border-indigo-500/30 text-xs text-indigo-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickAutoFillInfo(!showQuickAutoFillInfo)}
+                  className="w-full p-2.5 flex items-center justify-between gap-2 text-left hover:bg-indigo-900/20 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
+                    <span className="font-bold text-white text-xs">Quick Auto-Fill</span>
+                    <span className="text-[10px] text-indigo-300/70 font-normal">
+                      ({showQuickAutoFillInfo ? 'click to hide' : 'click to see how it works'})
+                    </span>
+                  </div>
+                  {showQuickAutoFillInfo ? (
+                    <ChevronUp className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 text-indigo-400/70 shrink-0" />
+                  )}
+                </button>
+
+                {showQuickAutoFillInfo && (
+                  <div className="px-3 pb-3 pt-0.5 text-xs text-indigo-200 leading-relaxed border-t border-indigo-500/20 animate-fadeIn">
+                    Copy the full placement drive message from WhatsApp and paste it below. We'll automatically extract the company name, type (Intern/FTE/PBC), CTC, and drive date!
+                  </div>
+                )}
               </div>
 
               {/* Validation Error */}
@@ -314,12 +335,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                     setRawMessage(e.target.value);
                     if (pasteError) setPasteError('');
                   }}
-                  placeholder={`Paste the announcement here...
-e.g.
-*Company*: Microsoft
-*Type*: Open Dream, Internship+ PBC (FTE)
-*Stipend*: 1.25 lakhs PM
-*Drive Date*: 25th September`}
+                  placeholder="Paste the announcement here....."
                   className="w-full px-3.5 py-3 bg-[#0B0F19] border border-slate-700/80 rounded-2xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono resize-none leading-relaxed"
                   autoFocus
                 />
@@ -343,7 +359,7 @@ e.g.
                 className="flex-1 py-2.5 px-4 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 active:scale-[0.98] rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>Parse Announcement ✨</span>
+                <span>Extract Details ✨</span>
               </button>
             </div>
           </div>
@@ -478,35 +494,46 @@ e.g.
               {/* ============================================================ */}
               {/* THE ONLY DECISION QUESTION: APPLYING VS SKIPPED              */}
               {/* ============================================================ */}
-              <div className="p-4 rounded-2xl bg-[#0B0F19] border border-slate-800 space-y-3">
-                <label className="block text-xs font-bold text-white uppercase tracking-wider">
-                  Are you applying for this company? <span className="text-rose-400">*</span>
-                </label>
+              <div className="p-3.5 rounded-2xl bg-[#0B0F19] border border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <span>Are you applying for this company?</span>
+                    <span className="text-rose-400">*</span>
+                  </label>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    status === 'applied' 
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
+                      : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                  }`}>
+                    {status === 'applied' ? "Applying" : "Not Applying"}
+                  </span>
+                </div>
 
-                <div className="grid grid-cols-2 gap-2.5">
+                {/* Segmented Toggle Button */}
+                <div className="flex items-center p-1 bg-[#131B2E] rounded-xl border border-slate-700/80 shadow-inner">
                   <button
                     type="button"
                     onClick={() => setStatus('applied')}
-                    className={`py-3 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 ${
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       status === 'applied'
-                        ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/30'
-                        : 'bg-[#131B2E] border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/40'
+                        : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    <Check className="w-4 h-4 text-emerald-300" />
+                    <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>I'm Applying</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setStatus('not_applied')}
-                    className={`py-3 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 ${
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       status === 'not_applied'
-                        ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-600/30'
-                        : 'bg-[#131B2E] border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
+                        ? 'bg-rose-600 text-white shadow-md shadow-rose-900/40'
+                        : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    <X className="w-4 h-4 text-rose-300" />
+                    <XCircle className="w-3.5 h-3.5" />
                     <span>Not Applying</span>
                   </button>
                 </div>
@@ -684,30 +711,31 @@ e.g.
                 <label className="block text-xs font-semibold text-slate-200 mb-2">
                   Placement Decision:
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                {/* Segmented Toggle Button */}
+                <div className="flex items-center p-1 bg-[#131B2E] rounded-xl border border-slate-700/80 shadow-inner">
                   <button
                     type="button"
                     onClick={() => setStatus('applied')}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       status === 'applied'
-                        ? 'bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-600/30'
-                        : 'bg-[#131B2E] border-slate-700 text-slate-300 hover:border-slate-600'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/40'
+                        : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    <Check className="w-3.5 h-3.5" />
+                    <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Applied</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setStatus('not_applied')}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       status === 'not_applied'
-                        ? 'bg-rose-600 border-rose-500 text-white shadow-md shadow-rose-600/30'
-                        : 'bg-[#131B2E] border-slate-700 text-slate-300 hover:border-slate-600'
+                        ? 'bg-rose-600 text-white shadow-md shadow-rose-900/40'
+                        : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <XCircle className="w-3.5 h-3.5" />
                     <span>Skipped</span>
                   </button>
                 </div>

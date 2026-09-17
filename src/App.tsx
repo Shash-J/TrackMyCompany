@@ -36,6 +36,7 @@ import { CompanyModal } from './components/CompanyModal';
 import { ProfileModal } from './components/ProfileModal';
 import { StatsView } from './components/StatsView';
 import { ImportExportModal } from './components/ImportExportModal';
+import { AboutModal } from './components/AboutModal';
 import { Footer } from './components/Footer';
 
 export const App: React.FC = () => {
@@ -55,6 +56,7 @@ export const App: React.FC = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [importExportInitialTab, setImportExportInitialTab] = useState<'import' | 'export' | 'backup'>('export');
   const [editCompany, setEditCompany] = useState<Company | null>(null);
   const [defaultStatusForModal, setDefaultStatusForModal] = useState<ApplicationStatus>('applied');
@@ -338,6 +340,7 @@ export const App: React.FC = () => {
             setImportExportInitialTab('export');
             setIsImportExportModalOpen(true);
           }}
+          onOpenAbout={() => setIsAboutModalOpen(true)}
         />
 
         {/* Main Content Area */}
@@ -627,6 +630,11 @@ export const App: React.FC = () => {
         profile={profile}
         initialTab={importExportInitialTab}
         onImportComplete={handleImportComplete}
+      />
+
+      <AboutModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
       />
 
     </div>

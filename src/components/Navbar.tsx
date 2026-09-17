@@ -18,6 +18,7 @@ interface NavbarProps {
   onOpenProfile: () => void;
   onOpenAddModal?: () => void;
   onOpenImportExport: () => void;
+  onOpenAbout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -27,16 +28,54 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenProfile,
   onOpenAddModal,
   onOpenImportExport,
+  onOpenAbout,
 }) => {
+  const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressActive = React.useRef(false);
+
+  const startPress = () => {
+    isLongPressActive.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressActive.current = true;
+      if (onOpenAbout) {
+        onOpenAbout();
+      }
+    }, 600); // 600ms hold triggers modal
+  };
+
+  const cancelPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (isLongPressActive.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      isLongPressActive.current = false;
+      return;
+    }
+    onSelectTab('dashboard');
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full glass-nav border-b border-slate-800/80 bg-[#0B0F19]/90 backdrop-blur-md">
       <div className="max-w-md md:max-w-5xl lg:max-w-6xl mx-auto px-3.5 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 gap-2">
           
-          {/* Logo & Brand */}
+          {/* Logo & Brand (Click for Dashboard, Long-press for Info & Privacy details) */}
           <div 
             className="flex items-center gap-2.5 cursor-pointer select-none active:scale-95 transition-transform" 
-            onClick={() => onSelectTab('dashboard')}
+            onClick={handleClick}
+            onMouseDown={startPress}
+            onMouseUp={cancelPress}
+            onMouseLeave={cancelPress}
+            onTouchStart={startPress}
+            onTouchEnd={cancelPress}
+            onTouchCancel={cancelPress}
+            title="Press and hold for site details & privacy"
           >
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-md shadow-indigo-500/25 border border-indigo-400/30 shrink-0">
               <Building2 className="w-4 h-4 text-white" />
