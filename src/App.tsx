@@ -287,6 +287,9 @@ export const App: React.FC = () => {
     setDragOverCompanyId(null);
   };
 
+  // Track if an import just completed to route to dashboard home page
+  const [justImported, setJustImported] = useState(false);
+
   const handleImportComplete = (imported: Company[], importedProfile?: StudentProfile) => {
     if (importedProfile && importedProfile.name) {
       saveProfile(importedProfile);
@@ -301,6 +304,8 @@ export const App: React.FC = () => {
 
     saveCompanies(merged);
     setCompanies(merged);
+    setJustImported(true);
+    setCurrentTab('dashboard');
   };
 
   // Navigation Tab Handler with browser history support
@@ -363,7 +368,13 @@ export const App: React.FC = () => {
 
   const closeImportExportModal = () => {
     setIsImportExportModalOpen(false);
-    if (window.location.hash === '#excel') {
+    if (justImported) {
+      setJustImported(false);
+      setCurrentTab('dashboard');
+      if (window.location.hash === '#excel' || window.location.hash === '#stats') {
+        window.history.replaceState({ tab: 'dashboard' }, '', window.location.pathname + window.location.search);
+      }
+    } else if (window.location.hash === '#excel') {
       window.history.back();
     }
   };

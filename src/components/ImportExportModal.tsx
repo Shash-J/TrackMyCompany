@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, 
   UploadCloud, 
@@ -10,6 +10,7 @@ import {
   Database,
   ArrowDownToLine
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import type { Company, StudentProfile } from '../types';
 import { 
   exportCompaniesToExcel, 
@@ -40,6 +41,33 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   const [activeTab, setActiveTab] = useState<'import' | 'export' | 'backup'>(initialTab);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset modal state whenever opened
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+      setStatusMessage(null);
+      setIsProcessing(false);
+    }
+  }, [isOpen, initialTab]);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleClose = () => {
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = null;
+    }
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -58,6 +86,23 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
           type: 'success',
           message: `Successfully imported ${result.importedCount} companies${result.profile ? ` and restored profile for ${result.profile.name}` : ''}!`,
         });
+
+        // Trigger celebratory confetti burst
+        try {
+          confetti({
+            particleCount: 75,
+            spread: 65,
+            origin: { y: 0.6 },
+          });
+        } catch {
+          // Ignore if confetti fails in headless env
+        }
+
+        // Gracefully return to home page after brief visual confirmation
+        if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = setTimeout(() => {
+          handleClose();
+        }, 1300);
       } else {
         setStatusMessage({
           type: 'error',
@@ -119,7 +164,10 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm overflow-hidden animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm overflow-hidden animate-fadeIn"
+      onClick={handleClose}
+    >
       <div 
         className="w-full max-w-md bg-[#131B2E] border-t sm:border border-slate-700/80 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -143,7 +191,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors active:scale-95"
           >
             <X className="w-5 h-5" />
@@ -191,17 +239,25 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
 
         {/* Feedback Message */}
         {statusMessage && (
-          <div className={`mx-6 mt-4 p-3 rounded-xl border text-xs flex items-center gap-2 ${
+          <div className={`mx-6 mt-4 p-3.5 rounded-xl border text-xs flex items-start gap-3 shadow-lg transition-all animate-fadeIn ${
             statusMessage.type === 'success'
-              ? 'bg-emerald-950/50 border-emerald-800/80 text-emerald-300'
-              : 'bg-rose-950/50 border-rose-800/80 text-rose-300'
+              ? 'bg-emerald-950/70 border-emerald-700/90 text-emerald-200'
+              : 'bg-rose-950/70 border-rose-800/90 text-rose-200'
           }`}>
             {statusMessage.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
             ) : (
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
             )}
-            <span>{statusMessage.message}</span>
+            <div className="space-y-1 flex-1">
+              <span className="font-semibold block text-emerald-100">{statusMessage.message}</span>
+              {statusMessage.type === 'success' && (
+                <div className="flex items-center gap-2 text-[11px] text-emerald-300/80">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span>Returning to home page...</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -269,26 +325,34 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
               </div>
 
               {/* Upload Dropzone */}
-              <label className="border-2 border-dashed border-slate-700 hover:border-indigo-500/60 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer bg-[#0B0F19]/60 hover:bg-[#0B0F19] transition-all">
-                <UploadCloud className="w-10 h-10 text-indigo-400/80 mb-2" />
+              <label className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                statusMessage?.type === 'success'
+                  ? 'border-emerald-500/60 bg-emerald-950/20 pointer-events-none'
+                  : 'border-slate-700 hover:border-indigo-500/60 bg-[#0B0F19]/60 hover:bg-[#0B0F19]'
+              }`}>
+                {statusMessage?.type === 'success' ? (
+                  <CheckCircle2 className="w-10 h-10 text-emerald-400 mb-2 animate-bounce" />
+                ) : (
+                  <UploadCloud className="w-10 h-10 text-indigo-400/80 mb-2" />
+                )}
                 <span className="text-sm font-semibold text-white">
-                  Click to browse or drop spreadsheet file
+                  {statusMessage?.type === 'success' ? 'Import Successful!' : 'Click to browse or drop spreadsheet file'}
                 </span>
                 <span className="text-xs text-slate-400 mt-1">
-                  Supports Excel (.xlsx) and CSV files. Automatic column detection.
+                  {statusMessage?.type === 'success' ? 'Returning to your dashboard shortly...' : 'Supports any Excel or CSV format. Only company list is required.'}
                 </span>
                 <input
                   type="file"
                   accept=".xlsx,.xls,.csv"
                   onChange={handleFileUpload}
-                  disabled={isProcessing}
+                  disabled={isProcessing || statusMessage?.type === 'success'}
                   className="hidden"
                 />
               </label>
 
               <div className="p-3 rounded-xl bg-[#0B0F19] border border-slate-800 text-[11px] text-slate-400 space-y-1">
-                <p className="font-semibold text-slate-300">Supported columns in your Excel file:</p>
-                <p>• Company Name, Role, CTC, Application Status (Applied / Not Applied), OA Date, Rejection Reason</p>
+                <p className="font-semibold text-slate-300">Ultra-Flexible Import Engine:</p>
+                <p>• Only mandatory requirement is a list of companies. All other columns (CTC, role, date, status) are optional and automatically detected!</p>
               </div>
             </div>
           )}
@@ -337,7 +401,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
         {/* Footer */}
         <div className="px-6 py-3 border-t border-slate-800 bg-[#0B0F19]/60 flex justify-end">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-all"
           >
             Close
