@@ -3,17 +3,55 @@
 > **The modern, privacy-first campus placement tracker for college students.**  
 > Effortlessly track visiting companies, Google Form applications, CTC details, Online Assessment (OA) drive dates, and rejection reason statistics.
 
-Built to replace annoying, messy Excel sheets with a high-performance web dashboard styled with the exact dark-mode aesthetic of [lastminuteplacementprep.in](https://www.lastminuteplacementprep.in/).
+Built to replace messy, error-prone Excel spreadsheets with a high-performance web dashboard styled with the exact dark-mode aesthetic of [lastminuteplacementprep.in](https://www.lastminuteplacementprep.in/).
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-success?style=for-the-badge&logo=github)](https://shash-j.github.io/TrackMyCompany/)
-[![Open Source](https://img.shields.io/badge/Open%20Source-%E2%99%A5-indigo.svg)](https://github.com/Shash-J/TrackMyCompany)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Vite](https://img.shields.io/badge/Bundled%20with-Vite-646CFF.svg)](https://vitejs.dev/)
-[![React](https://img.shields.io/badge/Framework-React%2019-61DAFB.svg)](https://react.dev/)
-[![TailwindCSS](https://img.shields.io/badge/Styled%20with-Tailwind%20CSS-38B2AC.svg)](https://tailwindcss.com/)
-[![PWA](https://img.shields.io/badge/PWA-Offline%20Ready-green.svg)](https://web.dev/progressive-web-apps/)
+[![Official Website](https://img.shields.io/badge/Website-trackmycompany.online-863bff?style=for-the-badge&logo=google-chrome)](https://trackmycompany.online)
+[![GitHub Pages Mirror](https://img.shields.io/badge/Mirror-GitHub%20Pages-success?style=for-the-badge&logo=github)](https://shash-j.github.io/TrackMyCompany/)
+[![PWA](https://img.shields.io/badge/PWA-Installable%20%26%20Offline%20Ready-green.svg?style=for-the-badge)](https://web.dev/progressive-web-apps/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
-**🌐 Live Website:** [https://shash-j.github.io/TrackMyCompany/](https://shash-j.github.io/TrackMyCompany/)
+---
+
+## 🌐 Live URLs
+
+- **Official Domain:** [https://trackmycompany.online](https://trackmycompany.online)
+- **Alternate Mirror (Works on restricted college Wi-Fi):** [https://shash-j.github.io/TrackMyCompany/](https://shash-j.github.io/TrackMyCompany/)
+
+> [!TIP]
+> **College Wi-Fi Restriction?**  
+> If your college firewall blocks custom `.online` domains, simply use the **GitHub Pages Mirror** above, or open `trackmycompany.online` once via mobile data/hotspot and tap **Install App**. Once installed, it works 100% offline without needing internet access!
+
+---
+
+## 📲 How to Install & Use (For Students — Zero Setup Required)
+
+You **do NOT need to code, clone any repository, or install Node.js** to use TrackMyCompany. It is a hosted, privacy-first **Progressive Web App (PWA)** that installs directly onto your phone or laptop in seconds.
+
+### 📱 1. On Mobile (Android)
+1. Open [https://trackmycompany.online](https://trackmycompany.online) (or the GitHub Pages mirror) in **Google Chrome**, **Brave**, or **Samsung Internet**.
+2. Look for the prompt at the bottom: **"Add TrackMyCompany to Home screen"** or **"Install App"**.
+3. *If no prompt appears:* Tap the **three dots menu (⋮)** in the top-right corner ➡️ tap **"Install app"** or **"Add to Home screen"**.
+4. Tap **Install**.
+5. The TrackMyCompany app icon is now on your home screen and app drawer. It opens full-screen just like an app from the Play Store and works completely offline!
+
+---
+
+### 🍏 2. On Mobile (iPhone / iPad — iOS)
+1. Open [https://trackmycompany.online](https://trackmycompany.online) (or the GitHub Pages mirror) in **Safari**.
+2. Tap the **Share** icon (the square with an arrow pointing upward at the bottom bar).
+3. Scroll down the menu and tap **"Add to Home Screen"**.
+4. Tap **Add** in the top right corner.
+5. The TrackMyCompany icon is now on your iOS home screen. It runs in standalone mode with full offline IndexedDB storage.
+
+---
+
+### 💻 3. On Laptop / PC (Windows, Mac, Linux)
+1. Open [https://trackmycompany.online](https://trackmycompany.online) (or the GitHub Pages mirror) in **Chrome**, **Edge**, or **Brave**.
+2. Look at the right side of the address bar (URL bar). You will see an **Install** icon (a computer monitor with a down arrow).
+3. Click it and select **"Install"**.
+   - *Alternatively:* Click the **three dots (⋮)** in Chrome/Edge ➡️ **"Cast, save, and share"** / **"Apps"** ➡️ **"Install TrackMyCompany"**.
+4. TrackMyCompany opens in its own clean, distraction-free desktop window without browser tabs.
+5. You can pin it to your Windows **Taskbar** or macOS **Dock** for instant one-click access.
 
 ---
 
@@ -24,8 +62,8 @@ During campus recruitment drives, company announcements arrive continuously on c
 - Why they decided not to apply to certain companies (Low CTC, bond agreements, location, etc.).
 - When the Online Assessment (OA) is scheduled and whether the college shortlisted them to write the test.
 
-**TrackMyCompany** solves all of this with zero setup friction:
-- **100% Client-Side Privacy**: No login, no passwords, no server database. Everything is saved directly in your browser's persistent database (**IndexedDB**).
+**TrackMyCompany** solves all of this with zero friction:
+- **100% Client-Side Privacy**: No login, no passwords, no server database. Everything is saved directly in your device's persistent database (**IndexedDB**).
 - **Persistent Storage API**: Calls `navigator.storage.persist()` so modern browsers won't auto-evict your data after periods of inactivity.
 - **Progressive Web App (PWA)**: Installable directly to your phone's home screen or laptop desktop. Works 100% offline via Service Worker caching.
 - **Immediate Onboarding**: Just enter your name and start tracking immediately.
@@ -80,12 +118,15 @@ During campus recruitment drives, company announcements arrive continuously on c
 
 ---
 
-## 💻 Getting Started Locally
+## 💻 For Developers & Contributors (Local Development)
+
+> [!NOTE]
+> This section is strictly for developers who want to inspect the source code or contribute features to the project. Regular users do not need this!
 
 ### Prerequisites
 - Node.js 18+ and npm installed on your machine.
 
-### Installation
+### Local Setup
 ```bash
 # Clone the repository
 git clone https://github.com/Shash-J/TrackMyCompany.git
@@ -110,26 +151,11 @@ npm run preview
 
 #### Deploy to GitHub Pages (Automated)
 This repository includes a pre-configured GitHub Actions workflow in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
-1. Go to your GitHub repository: [https://github.com/Shash-J/TrackMyCompany](https://github.com/Shash-J/TrackMyCompany)
-2. Navigate to **Settings** ➡️ **Pages** (under Code and automation).
-3. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-4. Push your commits to `main`:
+1. Push commits to `main`:
    ```bash
    git push origin main
    ```
-5. GitHub will automatically build and publish your site at **https://shash-j.github.io/TrackMyCompany/** for free!
-
----
-
-## 🤝 Contributing
-
-TrackMyCompany is an open-source project created by students, for students. Contributions are welcome!
-
-1. Fork the Project: `https://github.com/Shash-J/TrackMyCompany.git`
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. GitHub Actions will automatically build and publish your updates to GitHub Pages and your custom domain `trackmycompany.online`!
 
 ---
 
@@ -141,4 +167,4 @@ TrackMyCompany is an open-source project created by students, for students. Cont
 
 ---
 
-Made with ❤️ for campus placements • [GitHub Repository](https://github.com/Shash-J/TrackMyCompany.git)
+Made with ❤️ for campus placements • [Official Website](https://trackmycompany.online) • [GitHub Repository](https://github.com/Shash-J/TrackMyCompany.git)
