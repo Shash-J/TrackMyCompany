@@ -44,9 +44,14 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               <Building2 className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-tight leading-tight">
-                TrackMyCompany
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-white tracking-tight leading-tight">
+                  TrackMyCompany
+                </h2>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
+                  v1.0.0
+                </span>
+              </div>
               <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
                 Campus Placement & Company Tracker
               </p>
@@ -74,14 +79,19 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             </p>
           </div>
 
-          {/* 2. No Cloud Storage */}
+          {/* 2. No Cloud Storage - IndexedDB & PWA */}
           <div className="p-3.5 rounded-xl bg-[#0B0F19] border border-indigo-500/30 space-y-1.5 shadow-sm">
-            <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs">
-              <HardDrive className="w-4 h-4 shrink-0" />
-              <span>No Cloud Storage</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs">
+                <HardDrive className="w-4 h-4 shrink-0" />
+                <span>Persistent IndexedDB & PWA</span>
+              </div>
+              <span className="text-[10px] text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-700/40">
+                Offline Ready
+              </span>
             </div>
             <p className="text-slate-300 text-[11px] leading-relaxed">
-              All your company records, notes, and stats stay strictly on your device inside your browser's local storage. Your data never touches a remote server.
+              All your records, notes, and stats stay strictly on your device in your browser's persistent IndexedDB database. Works completely offline and never touches any remote cloud server.
             </p>
           </div>
 

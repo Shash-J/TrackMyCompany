@@ -11,6 +11,7 @@ Built to replace annoying, messy Excel sheets with a high-performance web dashbo
 [![Vite](https://img.shields.io/badge/Bundled%20with-Vite-646CFF.svg)](https://vitejs.dev/)
 [![React](https://img.shields.io/badge/Framework-React%2019-61DAFB.svg)](https://react.dev/)
 [![TailwindCSS](https://img.shields.io/badge/Styled%20with-Tailwind%20CSS-38B2AC.svg)](https://tailwindcss.com/)
+[![PWA](https://img.shields.io/badge/PWA-Offline%20Ready-green.svg)](https://web.dev/progressive-web-apps/)
 
 **🌐 Live Website:** [https://shash-j.github.io/TrackMyCompany/](https://shash-j.github.io/TrackMyCompany/)
 
@@ -24,11 +25,14 @@ During campus recruitment drives, company announcements arrive continuously on c
 - When the Online Assessment (OA) is scheduled and whether the college shortlisted them to write the test.
 
 **TrackMyCompany** solves all of this with zero setup friction:
-- **100% Client-Side Privacy**: No login, no passwords, no server database. Everything is saved directly in your browser's local storage.
+- **100% Client-Side Privacy**: No login, no passwords, no server database. Everything is saved directly in your browser's persistent database (**IndexedDB**).
+- **Persistent Storage API**: Calls `navigator.storage.persist()` so modern browsers won't auto-evict your data after periods of inactivity.
+- **Progressive Web App (PWA)**: Installable directly to your phone's home screen or laptop desktop. Works 100% offline via Service Worker caching.
 - **Immediate Onboarding**: Just enter your name and start tracking immediately.
 - **Smart OA Shortlist Tracker**: Track Form Submitted status, OA drive dates, and shortlist outcomes (`Pending`, `Shortlisted for OA 🎉`, `Not Shortlisted`).
 - **Rejection Reason Analytics**: Categorize skipped companies using preset chips (*Low CTC*, *Strict Bond*, *Location Not Preferred*, etc.) or custom notes, with visual breakdown charts on the Statistics page.
 - **Excel & CSV Superpowers**: Export your full dataset anytime or import your existing placement spreadsheets with smart column detection and template downloads.
+- **Proactive Backup Safety**: In-app JSON backup snapshots with automatic backup reminders so you never lose your progress.
 - **LMPP Dark Aesthetic**: Sleek slate-navy palette, Inter typography, glowing status badges, and confetti celebrations.
 
 ---
@@ -39,6 +43,7 @@ During campus recruitment drives, company announcements arrive continuously on c
 - **Applied Workflow**: Track priority (P1 High, P2 Medium, P3 Low), free-text CTC (e.g. `18 LPA`, `8.5 + 1L Retention Bonus`), Google Form link, and OA drive date.
 - **Not Applied Workflow**: One-click rejection reason pills (*Low CTC*, *Strict Bond*, *Location*, *Ineligible*, *Other*) plus custom descriptive notes.
 - **Real-time Search & Multi-Filters**: Filter by Tier (`Open Dream ≥12 LPA`, `Dream <12 LPA`, `Mass`, `Internship`), Priority, OA Shortlist status, or search company names and roles.
+- **Drag-and-Drop Rank Reordering**: Shift company priorities with smooth drag-and-drop.
 
 ### 2. Comprehensive Analytics & Funnel
 - **Application Funnel**: Visited ➡️ Applied Rate (%) ➡️ OA Shortlist Conversion (%).
@@ -55,17 +60,23 @@ During campus recruitment drives, company announcements arrive continuously on c
 - Download standard Excel template with pre-filled examples.
 - Portable JSON backup & restore.
 
+### 5. Progressive Web App (PWA) & Offline Mode
+- Installable on Android, iOS, Windows, and macOS.
+- Works offline with full read/write capabilities via IndexedDB.
+- Background Service Worker caching for instant load times.
+
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend Framework**: [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Build Tool**: [Vite 6](https://vitejs.dev/)
+- **Frontend Framework**: [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- **Build Tool**: [Vite](https://vitejs.dev/)
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + Custom Design Tokens matching LMPP
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Spreadsheet Engine**: [SheetJS (xlsx)](https://docs.sheetjs.com/)
 - **Effects**: [canvas-confetti](https://www.npmjs.com/package/canvas-confetti)
-- **Data Persistence**: Browser `localStorage` with reactive cross-tab events
+- **Data Persistence**: **IndexedDB** via `idb` with Persistent Storage API (`navigator.storage.persist()`) & automatic `localStorage` migration
+- **PWA**: Service Worker with offline caching & Web App Manifest
 
 ---
 
@@ -90,8 +101,6 @@ npm run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
-
-```
 
 ### Production Build & Free Deployment
 ```bash
@@ -126,8 +135,9 @@ TrackMyCompany is an open-source project created by students, for students. Cont
 
 ## 📜 Privacy & Disclaimers
 
-1. **Privacy Guarantee**: All data entered into TrackMyCompany is stored exclusively in your browser's local storage (`localStorage`). No data is sent to any remote server or third-party service.
-2. **Design Disclaimer**: UI/UX patterns and workflows are designed specifically for student convenience during high-pressure placement drives.
+1. **Privacy Guarantee**: All data entered into TrackMyCompany is stored exclusively in your browser's private database (**IndexedDB**). No data is sent to any remote server or third-party service.
+2. **Persistence Guarantee**: By leveraging modern browser IndexedDB and the Persistent Storage API, your data remains intact across sessions, tab closes, and browser restarts.
+3. **Design Disclaimer**: UI/UX patterns and workflows are designed specifically for student convenience during high-pressure placement drives.
 
 ---
 

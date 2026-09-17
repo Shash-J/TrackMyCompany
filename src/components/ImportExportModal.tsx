@@ -133,12 +133,20 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
     setStatusMessage({ type: 'success', message: 'CSV (.csv) file generated and downloaded.' });
   };
 
-  const handleJSONBackupDownload = () => {
-    const jsonStr = exportToJSON();
-    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
-    const filename = `TrackMyCompany_Backup_${new Date().toISOString().split('T')[0]}.json`;
-    downloadBlobFile(blob, filename);
-    setStatusMessage({ type: 'success', message: 'JSON backup downloaded.' });
+  const handleJSONBackupDownload = async () => {
+    setIsProcessing(true);
+    try {
+      const jsonStr = await exportToJSON();
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+      const filename = `TrackMyCompany_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      downloadBlobFile(blob, filename);
+      setStatusMessage({ type: 'success', message: 'JSON backup downloaded.' });
+    } catch (err) {
+      console.error('Failed to generate JSON backup:', err);
+      setStatusMessage({ type: 'error', message: 'Failed to generate JSON backup.' });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleJSONRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,17 +154,20 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const text = event.target?.result as string;
-        const success = importFromJSON(text);
+        const success = await importFromJSON(text);
         if (success) {
           setStatusMessage({ type: 'success', message: 'Backup restored successfully!' });
-          window.location.reload();
+          setTimeout(() => {
+            window.location.reload();
+          }, 800);
         } else {
           setStatusMessage({ type: 'error', message: 'Invalid backup file format.' });
         }
       } catch (err) {
+        console.error('Failed to read backup file:', err);
         setStatusMessage({ type: 'error', message: 'Failed to read backup file.' });
       }
     };

@@ -1,4 +1,17 @@
 import type { Company, StudentProfile, StatisticsData, RejectionReasonTag, OARejectionReasonTag } from '../types';
+import {
+  initDB,
+  getCompaniesFromDB,
+  saveCompaniesToDB,
+  getProfileFromDB,
+  saveProfileToDB,
+  getLastBackupDate,
+  setLastBackupDate,
+  requestPersistentStorage,
+  isStoragePersisted,
+} from './db';
+
+export { getLastBackupDate, setLastBackupDate, requestPersistentStorage, isStoragePersisted };
 
 const STORAGE_KEY_COMPANIES = 'track_my_company_companies_v1';
 const STORAGE_KEY_PROFILE = 'track_my_company_profile_v1';
@@ -39,48 +52,70 @@ export const normalizeOARejectionTag = (tag: string): OARejectionReasonTag => {
   return 'Others';
 };
 
-export const getProfile = (): StudentProfile | null => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_PROFILE);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error('Failed to load profile from localStorage', err);
-    return null;
-  }
+// In-memory cache for ultra-fast UI renders
+let memoryCompanies: Company[] = [];
+let memoryProfile: StudentProfile | null = null;
+let isInitialized = false;
+
+/**
+ * Initialize storage engine (IndexedDB + one-time migration from localStorage).
+ */
+export const initStorage = async (): Promise<{ companies: Company[]; profile: StudentProfile | null }> => {
+  await initDB();
+  memoryCompanies = await getCompaniesFromDB();
+  memoryProfile = await getProfileFromDB();
+  isInitialized = true;
+  return { companies: memoryCompanies, profile: memoryProfile };
 };
 
-export const saveProfile = (profile: StudentProfile): void => {
+export const getProfile = async (): Promise<StudentProfile | null> => {
+  if (!isInitialized) {
+    await initStorage();
+  }
+  const profile = await getProfileFromDB();
+  memoryProfile = profile;
+  return profile;
+};
+
+export const getProfileSync = (): StudentProfile | null => {
+  return memoryProfile;
+};
+
+export const saveProfile = async (profile: StudentProfile): Promise<void> => {
+  memoryProfile = { ...profile };
+  await saveProfileToDB(profile);
+  // Keep localStorage updated as fallback
   try {
     localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile));
-    window.dispatchEvent(new Event('storage-profile-change'));
-  } catch (err) {
-    console.error('Failed to save profile to localStorage', err);
-  }
+  } catch (_) {}
+  window.dispatchEvent(new Event('storage-profile-change'));
 };
 
-export const getCompanies = (): Company[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_COMPANIES);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error('Failed to load companies from localStorage', err);
-    return [];
+export const getCompanies = async (): Promise<Company[]> => {
+  if (!isInitialized) {
+    await initStorage();
   }
+  const companies = await getCompaniesFromDB();
+  memoryCompanies = companies;
+  return companies;
 };
 
-export const saveCompanies = (companies: Company[]): void => {
+export const getCompaniesSync = (): Company[] => {
+  return memoryCompanies;
+};
+
+export const saveCompanies = async (companies: Company[]): Promise<void> => {
+  memoryCompanies = [...companies];
+  await saveCompaniesToDB(companies);
+  // Keep localStorage updated as fallback
   try {
     localStorage.setItem(STORAGE_KEY_COMPANIES, JSON.stringify(companies));
-    window.dispatchEvent(new Event('storage-companies-change'));
-  } catch (err) {
-    console.error('Failed to save companies to localStorage', err);
-  }
+  } catch (_) {}
+  window.dispatchEvent(new Event('storage-companies-change'));
 };
 
-export const addCompany = (data: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>): Company => {
-  const existing = getCompanies();
+export const addCompany = async (data: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>): Promise<Company> => {
+  const existing = await getCompanies();
   const now = new Date().toISOString();
   const newCompany: Company = {
     ...data,
@@ -89,22 +124,22 @@ export const addCompany = (data: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>
     updatedAt: now,
   };
   const updated = [newCompany, ...existing];
-  saveCompanies(updated);
+  await saveCompanies(updated);
   return newCompany;
 };
 
-export const updateCompany = (company: Company): void => {
-  const existing = getCompanies();
+export const updateCompany = async (company: Company): Promise<void> => {
+  const existing = await getCompanies();
   const updated = existing.map((c) =>
     c.id === company.id ? { ...company, updatedAt: new Date().toISOString() } : c
   );
-  saveCompanies(updated);
+  await saveCompanies(updated);
 };
 
-export const deleteCompany = (id: string): void => {
-  const existing = getCompanies();
+export const deleteCompany = async (id: string): Promise<void> => {
+  const existing = await getCompanies();
   const updated = existing.filter((c) => c.id !== id);
-  saveCompanies(updated);
+  await saveCompanies(updated);
 };
 
 export const calculateStatistics = (companies: Company[]): StatisticsData => {
@@ -241,24 +276,28 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
   };
 };
 
-export const exportToJSON = (): string => {
+export const exportToJSON = async (): Promise<string> => {
+  const [profile, companies] = await Promise.all([getProfile(), getCompanies()]);
+  const now = new Date().toISOString();
   const data = {
-    profile: getProfile(),
-    companies: getCompanies(),
-    exportedAt: new Date().toISOString(),
+    profile,
+    companies,
+    exportedAt: now,
     version: '1.0',
+    storageEngine: 'IndexedDB',
   };
+  await setLastBackupDate(now);
   return JSON.stringify(data, null, 2);
 };
 
-export const importFromJSON = (jsonString: string): boolean => {
+export const importFromJSON = async (jsonString: string): Promise<boolean> => {
   try {
     const parsed = JSON.parse(jsonString);
     if (parsed.profile) {
-      saveProfile(parsed.profile);
+      await saveProfile(parsed.profile);
     }
     if (Array.isArray(parsed.companies)) {
-      saveCompanies(parsed.companies);
+      await saveCompanies(parsed.companies);
     }
     return true;
   } catch (err) {
