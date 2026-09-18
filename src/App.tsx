@@ -86,8 +86,7 @@ import {
   getProfile, 
   saveProfile, 
   calculateStatistics,
-  initStorage,
-  getLastBackupDate
+  initStorage
 } from './services/storage';
 import { Navbar } from './components/Navbar';
 import type { NavTab } from './components/Navbar';
@@ -124,7 +123,13 @@ export const App: React.FC = () => {
   const [importExportInitialTab, setImportExportInitialTab] = useState<'import' | 'export' | 'backup'>('export');
   const [editCompany, setEditCompany] = useState<Company | null>(null);
   const [defaultStatusForModal, setDefaultStatusForModal] = useState<ApplicationStatus>('applied');
-  const [showBackupReminder, setShowBackupReminder] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      ((navigator as any).standalone === true)
+    );
+  });
 
   // Load initial data from IndexedDB
   useEffect(() => {
@@ -143,19 +148,6 @@ export const App: React.FC = () => {
         // If student hasn't entered a name yet, prompt on first visit
         if (!loadedProfile || !loadedProfile.name) {
           setIsProfileModalOpen(true);
-        }
-
-        // Check if backup reminder is due (> 7 days since last backup or never backed up with >= 3 companies)
-        const lastBackup = await getLastBackupDate();
-        if (loadedCompanies.length >= 3) {
-          if (!lastBackup) {
-            setShowBackupReminder(true);
-          } else {
-            const daysSinceBackup = (Date.now() - new Date(lastBackup).getTime()) / (1000 * 60 * 60 * 24);
-            if (daysSinceBackup >= 7) {
-              setShowBackupReminder(true);
-            }
-          }
         }
       } catch (err) {
         console.error('Failed to load initial data from storage', err);
@@ -190,14 +182,20 @@ export const App: React.FC = () => {
       setDeferredInstallPrompt(e);
     };
 
+    const handleAppInstalled = () => {
+      setIsStandalone(true);
+      setIsInstallPromptOpen(false);
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     // Check if running in standalone mode (already installed as PWA)
-    const isStandalone = 
+    const isCurrentlyStandalone = 
       (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || 
       (typeof navigator !== 'undefined' && (navigator as any).standalone === true);
 
-    if (!isStandalone) {
+    if (!isCurrentlyStandalone) {
       const today = new Date().toISOString().split('T')[0];
       const lastShown = localStorage.getItem('track_my_company_last_install_prompt_date');
       if (lastShown !== today) {
@@ -209,12 +207,14 @@ export const App: React.FC = () => {
         return () => {
           clearTimeout(timer);
           window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+          window.removeEventListener('appinstalled', handleAppInstalled);
         };
       }
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -688,39 +688,9 @@ export const App: React.FC = () => {
           onOpenAddModal={() => openCompanyModalWithStatus(statusFilter === 'not_applied' ? 'not_applied' : 'applied')}
           onOpenImportExport={() => openImportExportModal('export')}
           onOpenAbout={openAboutModal}
+          onOpenInstall={() => setIsInstallPromptOpen(true)}
+          isStandalone={isStandalone}
         />
-
-        {/* Backup Reminder Banner (Shows if >= 3 companies and no backup for 7+ days) */}
-        {showBackupReminder && (
-          <div className="mx-3.5 sm:mx-6 lg:mx-8 mt-3 p-3 bg-gradient-to-r from-indigo-950/70 via-purple-950/70 to-slate-900 border border-indigo-500/30 rounded-2xl flex items-center justify-between gap-3 text-xs text-slate-200 shadow-xl animate-fadeIn">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="text-base shrink-0">💾</span>
-              <div className="min-w-0">
-                <span className="font-semibold text-indigo-300">Data Safety Tip:</span> Your tracker is saved in browser IndexedDB. Consider exporting a JSON backup for safe keeping.
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowBackupReminder(false);
-                  openImportExportModal('backup');
-                }}
-                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors text-[11px] shadow-sm active:scale-95"
-              >
-                Backup Now
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowBackupReminder(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors"
-                title="Dismiss reminder"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Main Content Area */}
         <main className="flex-1 w-full px-3.5 sm:px-6 lg:px-8 pt-4 pb-28 md:pb-12">
@@ -1092,6 +1062,8 @@ export const App: React.FC = () => {
       <AboutModal
         isOpen={isAboutModalOpen}
         onClose={closeAboutModal}
+        onOpenInstall={() => setIsInstallPromptOpen(true)}
+        isStandalone={isStandalone}
       />
 
       <InstallPromptModal

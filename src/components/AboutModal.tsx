@@ -7,18 +7,26 @@ import {
   Mail, 
   Check, 
   Copy, 
-  ExternalLink,
-  Building2,
-  Heart
+  ExternalLink, 
+  Building2, 
+  Heart,
+  Smartphone
 } from 'lucide-react';
 import { GithubIcon } from './GithubIcon';
 
 interface AboutModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenInstall?: () => void;
+  isStandalone?: boolean;
 }
 
-export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
+export const AboutModal: React.FC<AboutModalProps> = ({ 
+  isOpen, 
+  onClose,
+  onOpenInstall,
+  isStandalone = false
+}) => {
   const [copied, setCopied] = useState(false);
   const contactEmail = 'shasedujois@gmail.com';
 
@@ -93,6 +101,19 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             <p className="text-slate-300 text-[11px] leading-relaxed">
               All your records, notes, and stats stay strictly on your device in your browser's persistent IndexedDB database. Works completely offline and never touches any remote cloud server.
             </p>
+            {!isStandalone && onOpenInstall && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenInstall();
+                }}
+                className="mt-2 w-full py-2 px-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-indigo-900/30 active:scale-95 cursor-pointer"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>Add Icon to Home Screen (Install)</span>
+              </button>
+            )}
           </div>
 
           {/* 3. Open Source */}

@@ -5,7 +5,8 @@ import {
   UserCheck,
   LayoutDashboard,
   BarChart3,
-  Plus
+  Plus,
+  Smartphone
 } from 'lucide-react';
 import type { StudentProfile } from '../types';
 
@@ -19,6 +20,8 @@ interface NavbarProps {
   onOpenAddModal?: () => void;
   onOpenImportExport: () => void;
   onOpenAbout?: () => void;
+  onOpenInstall?: () => void;
+  isStandalone?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,6 +32,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAddModal,
   onOpenImportExport,
   onOpenAbout,
+  onOpenInstall,
+  isStandalone = false,
 }) => {
   const longPressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressActive = React.useRef(false);
@@ -149,6 +154,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
               <span className="hidden sm:inline text-xs text-slate-300 font-medium">Excel</span>
             </button>
+
+            {/* Install / Add to Home Screen Button (Visible if not running as standalone PWA) */}
+            {!isStandalone && onOpenInstall && (
+              <button
+                onClick={onOpenInstall}
+                title="Add icon to Home Screen"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white border border-indigo-500/40 rounded-xl transition-all active:scale-95 cursor-pointer"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden sm:inline">Install</span>
+              </button>
+            )}
 
           </div>
 
