@@ -8,7 +8,6 @@ import {
   Calendar,
   Clock,
   CheckCircle2,
-  XCircle,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -52,7 +51,18 @@ const parseDateToTimestamp = (dateStr?: string): number | null => {
     return isNaN(date.getTime()) ? null : date.getTime();
   }
 
-  // 3. Fallback to standard Date parsing
+  // 3. Month names like "19 Sept", "21 September", "Sept 19" (if year missing, assume current placement year)
+  const currentYear = new Date().getFullYear();
+  if (!/\b\d{4}\b/.test(s)) {
+    const withYear = `${s} ${currentYear}`;
+    const parsedWithYear = new Date(withYear);
+    if (!isNaN(parsedWithYear.getTime())) {
+      parsedWithYear.setHours(0, 0, 0, 0);
+      return parsedWithYear.getTime();
+    }
+  }
+
+  // 4. Fallback to standard Date parsing
   const parsed = new Date(s);
   if (!isNaN(parsed.getTime())) {
     parsed.setHours(0, 0, 0, 0);
@@ -68,6 +78,16 @@ const formatDriveDate = (dateStr: string): string => {
     return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
   return dateStr;
+};
+
+/**
+ * Format date to YYYY-MM-DD in local time to avoid timezone offset shifts.
+ */
+const getLocalDateString = (d: Date = new Date()): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 type CompanyListGroup = 'applied_shortlisted' | 'applied_not_shortlisted' | 'skipped';
@@ -98,6 +118,7 @@ import { StatsView } from './components/StatsView';
 import { ImportExportModal } from './components/ImportExportModal';
 import { AboutModal } from './components/AboutModal';
 import { InstallPromptModal } from './components/InstallPromptModal';
+import { TodayDriveReminderModal } from './components/TodayDriveReminderModal';
 import { Footer } from './components/Footer';
 
 export const App: React.FC = () => {
@@ -196,7 +217,7 @@ export const App: React.FC = () => {
       (typeof navigator !== 'undefined' && (navigator as any).standalone === true);
 
     if (!isCurrentlyStandalone) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       const lastShown = localStorage.getItem('track_my_company_last_install_prompt_date');
       if (lastShown !== today) {
         // Show after brief initial delay
@@ -262,46 +283,88 @@ export const App: React.FC = () => {
   // Compute Statistics
   const stats = useMemo(() => calculateStatistics(companies), [companies]);
 
-  // Upcoming Drives: Immediate next coming company and full list of upcoming drives
-  // Prioritizes applied scheduled drives; if none or when toggled to skipped, auto-advances to next scheduled upcoming drive
+  // Upcoming Drives: strictly companies student will attend (Applied, not rejected for OA, >= today)
+  // Never includes skipped companies or companies where student wasn't shortlisted for OA!
   const { immediateNextDrive, allUpcomingDrives } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayMs = today.getTime();
 
-    // Map and filter all companies that have a valid drive date
-    const withDates = companies
+    // Map and filter strictly to applied, eligible (shortlisted / pending OA), upcoming (>= today) drives
+    const eligibleUpcoming = companies
       .map((c) => ({
         company: c,
         timestamp: parseDateToTimestamp(c.oaDate),
       }))
-      .filter((item): item is { company: Company; timestamp: number } => item.timestamp !== null)
+      .filter((item): item is { company: Company; timestamp: number } => {
+        return (
+          item.timestamp !== null &&
+          item.timestamp >= todayMs &&
+          item.company.status === 'applied' &&
+          item.company.oaStatus !== 'not_shortlisted'
+        );
+      })
       .sort((a, b) => a.timestamp - b.timestamp);
 
-    if (withDates.length === 0) {
+    if (eligibleUpcoming.length === 0) {
       return { immediateNextDrive: null, allUpcomingDrives: [] };
     }
 
-    // Future scheduled drives (>= today)
-    const futureDrives = withDates.filter((item) => item.timestamp >= todayMs);
-    const activePool = futureDrives.length > 0 ? futureDrives : withDates;
-
-    // First priority: Applied drives (not rejected for OA)
-    const appliedDrives = activePool.filter(
-      (item) => item.company.status === 'applied' && item.company.oaStatus !== 'not_shortlisted'
-    );
-
-    // If applied drives exist in the active pool, immediateNextDrive is the earliest applied drive.
-    // If no applied drives exist (e.g. user toggled to skipped or has only skipped drives):
-    // Auto-advance to the earliest scheduled drive in the pool rather than disappearing!
-    const nextComing = appliedDrives.length > 0 ? appliedDrives[0].company : activePool[0].company;
-    const allDrives = activePool.map((item) => item.company);
-
     return {
-      immediateNextDrive: nextComing,
-      allUpcomingDrives: allDrives,
+      immediateNextDrive: eligibleUpcoming[0].company,
+      allUpcomingDrives: eligibleUpcoming.map((item) => item.company),
     };
   }, [companies]);
+
+  // Today's Drive Reminder (One-time alert for any company scheduled today, applied or not-applied)
+  const [todayReminderCompanies, setTodayReminderCompanies] = useState<Company[]>([]);
+  const [isTodayReminderOpen, setIsTodayReminderOpen] = useState(false);
+
+  useEffect(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
+    const todayStr = getLocalDateString(today);
+
+    // Find all companies whose drive date matches today
+    const scheduledToday = companies.filter((c) => {
+      const ts = parseDateToTimestamp(c.oaDate);
+      return ts !== null && ts === todayMs;
+    });
+
+    if (scheduledToday.length === 0) return;
+
+    // Check which company IDs have already been acknowledged today
+    let remindedIds: string[] = [];
+    try {
+      const stored = localStorage.getItem(`tmc_today_drives_reminded_${todayStr}`);
+      if (stored) remindedIds = JSON.parse(stored);
+    } catch (_) {}
+
+    const unreminded = scheduledToday.filter((c) => !remindedIds.includes(c.id));
+    if (unreminded.length > 0) {
+      setTodayReminderCompanies(unreminded);
+      setIsTodayReminderOpen(true);
+    }
+  }, [companies]);
+
+  const handleCloseTodayReminder = () => {
+    const today = new Date();
+    const todayStr = getLocalDateString(today);
+
+    let remindedIds: string[] = [];
+    try {
+      const stored = localStorage.getItem(`tmc_today_drives_reminded_${todayStr}`);
+      if (stored) remindedIds = JSON.parse(stored);
+    } catch (_) {}
+
+    const updated = Array.from(new Set([...remindedIds, ...todayReminderCompanies.map((c) => c.id)]));
+    try {
+      localStorage.setItem(`tmc_today_drives_reminded_${todayStr}`, JSON.stringify(updated));
+    } catch (_) {}
+
+    setIsTodayReminderOpen(false);
+  };
 
   // Profile Save
   const handleSaveProfile = async (newProfile: StudentProfile) => {
@@ -754,12 +817,7 @@ export const App: React.FC = () => {
                             </span>
 
                             <div className="flex items-center gap-1.5">
-                              {drive.status === 'not_applied' ? (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
-                                  <XCircle className="w-2.5 h-2.5" />
-                                  Skipped{drive.rejectionReasonTags?.length ? ` (${drive.rejectionReasonTags[0]})` : ''}
-                                </span>
-                              ) : drive.oaStatus === 'shortlisted' ? (
+                              {drive.oaStatus === 'shortlisted' ? (
                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
                                   <CheckCircle2 className="w-2.5 h-2.5" />
                                   Selected
@@ -1070,6 +1128,12 @@ export const App: React.FC = () => {
         isOpen={isInstallPromptOpen}
         onClose={() => setIsInstallPromptOpen(false)}
         deferredPrompt={deferredInstallPrompt}
+      />
+
+      <TodayDriveReminderModal
+        isOpen={isTodayReminderOpen}
+        onClose={handleCloseTodayReminder}
+        companies={todayReminderCompanies}
       />
 
     </div>
