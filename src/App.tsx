@@ -69,6 +69,14 @@ const formatDriveDate = (dateStr: string): string => {
   }
   return dateStr;
 };
+
+type CompanyListGroup = 'applied_shortlisted' | 'applied_not_shortlisted' | 'skipped';
+
+const getCompanyGroup = (company: Company): CompanyListGroup => {
+  if (company.status === 'not_applied') return 'skipped';
+  if (company.oaStatus === 'not_shortlisted') return 'applied_not_shortlisted';
+  return 'applied_shortlisted';
+};
 import { 
   getCompanies, 
   saveCompanies, 
@@ -105,6 +113,7 @@ export const App: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'applied' | 'not_applied'>('applied');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  const [isNotShortlistedCollapsed, setIsNotShortlistedCollapsed] = useState(false);
 
   // Modals
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -397,22 +406,53 @@ export const App: React.FC = () => {
     }
   };
 
-  // Drag and drop reordering state & handlers: shifts all intermediate ranks
+  // Drag and drop reordering state & handlers: restricted strictly to inside the same group
   const [draggedCompanyId, setDraggedCompanyId] = useState<string | null>(null);
   const [dragOverCompanyId, setDragOverCompanyId] = useState<string | null>(null);
 
   const reorderCompanies = async (sourceId: string, targetId: string) => {
     if (sourceId === targetId) return;
 
-    const sourceIdx = companies.findIndex((c) => c.id === sourceId);
-    const targetIdx = companies.findIndex((c) => c.id === targetId);
+    const source = companies.find((c) => c.id === sourceId);
+    const target = companies.find((c) => c.id === targetId);
+    if (!source || !target) return;
+
+    const sourceGroup = getCompanyGroup(source);
+    const targetGroup = getCompanyGroup(target);
+    // Strict restriction: Dragging & dropping only within the same group
+    if (sourceGroup !== targetGroup) return;
+
+    const groupItems = companies.filter((c) => getCompanyGroup(c) === sourceGroup);
+    const sourceIdx = groupItems.findIndex((c) => c.id === sourceId);
+    const targetIdx = groupItems.findIndex((c) => c.id === targetId);
     if (sourceIdx === -1 || targetIdx === -1) return;
 
-    // Pure rank shifting: remove from sourceIdx and insert at targetIdx
-    // This shifts all companies in between by one instead of interchanging
-    const newMaster = [...companies];
-    const [movedItem] = newMaster.splice(sourceIdx, 1);
-    newMaster.splice(targetIdx, 0, movedItem);
+    // Pure rank shifting inside this group
+    const newGroupItems = [...groupItems];
+    const [movedItem] = newGroupItems.splice(sourceIdx, 1);
+    newGroupItems.splice(targetIdx, 0, movedItem);
+
+    // Reconstruct master list maintaining group boundaries
+    const shortlisted = companies.filter((c) => getCompanyGroup(c) === 'applied_shortlisted');
+    const notShortlisted = companies.filter((c) => getCompanyGroup(c) === 'applied_not_shortlisted');
+    const skipped = companies.filter((c) => getCompanyGroup(c) === 'skipped');
+    const others = companies.filter(
+      (c) => !['applied_shortlisted', 'applied_not_shortlisted', 'skipped'].includes(getCompanyGroup(c))
+    );
+
+    let newShortlisted = shortlisted;
+    let newNotShortlisted = notShortlisted;
+    let newSkipped = skipped;
+
+    if (sourceGroup === 'applied_shortlisted') {
+      newShortlisted = newGroupItems;
+    } else if (sourceGroup === 'applied_not_shortlisted') {
+      newNotShortlisted = newGroupItems;
+    } else if (sourceGroup === 'skipped') {
+      newSkipped = newGroupItems;
+    }
+
+    const newMaster = [...newShortlisted, ...newNotShortlisted, ...newSkipped, ...others];
 
     setCompanies(newMaster);
     await saveCompanies(newMaster);
@@ -426,6 +466,18 @@ export const App: React.FC = () => {
 
   const handleDragOver = (e: React.DragEvent, id: string) => {
     e.preventDefault();
+    if (!draggedCompanyId) return;
+
+    const source = companies.find((c) => c.id === draggedCompanyId);
+    const target = companies.find((c) => c.id === id);
+    if (!source || !target || getCompanyGroup(source) !== getCompanyGroup(target)) {
+      e.dataTransfer.dropEffect = 'none';
+      if (dragOverCompanyId !== null) {
+        setDragOverCompanyId(null);
+      }
+      return;
+    }
+
     e.dataTransfer.dropEffect = 'move';
     if (dragOverCompanyId !== id) {
       setDragOverCompanyId(id);
@@ -441,7 +493,11 @@ export const App: React.FC = () => {
   const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     if (draggedCompanyId && draggedCompanyId !== targetId) {
-      reorderCompanies(draggedCompanyId, targetId);
+      const source = companies.find((c) => c.id === draggedCompanyId);
+      const target = companies.find((c) => c.id === targetId);
+      if (source && target && getCompanyGroup(source) === getCompanyGroup(target)) {
+        reorderCompanies(draggedCompanyId, targetId);
+      }
     }
     setDraggedCompanyId(null);
     setDragOverCompanyId(null);
@@ -584,6 +640,17 @@ export const App: React.FC = () => {
         return true;
       });
   }, [companies, statusFilter, searchQuery]);
+
+  // Derived groups for the Applied tab: Shortlisted vs Not Shortlisted
+  const appliedShortlisted = useMemo(() => {
+    if (statusFilter !== 'applied') return [];
+    return filteredCompanies.filter((c) => c.oaStatus !== 'not_shortlisted');
+  }, [filteredCompanies, statusFilter]);
+
+  const appliedNotShortlisted = useMemo(() => {
+    if (statusFilter !== 'applied') return [];
+    return filteredCompanies.filter((c) => c.oaStatus === 'not_shortlisted');
+  }, [filteredCompanies, statusFilter]);
 
   const getDaysRemainingBadge = (dateStr: string) => {
     const today = new Date();
@@ -790,41 +857,156 @@ export const App: React.FC = () => {
 
               </div>
 
-              {/* Companies Feed (Each card shows ONLY company name until clicked) */}
+              {/* Companies Feed: Grouped by Shortlisted vs Not Shortlisted in Applied tab */}
               {filteredCompanies.length > 0 ? (
-                <div className="space-y-2">
-                  {/* Subtle reorder tip when multiple companies exist and not searching */}
-                  {filteredCompanies.length > 1 && !searchQuery.trim() && (
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
-                      <span>{filteredCompanies.length} companies</span>
-                      <span className="flex items-center gap-1 text-slate-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block animate-pulse" />
-                        <span>Drag cards to reorder</span>
-                      </span>
-                    </div>
-                  )}
+                statusFilter === 'applied' ? (
+                  <div className="space-y-4">
+                    {/* SECTION 1: SHORTLISTED FOR OA (TOP) */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs px-1">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            Shortlisted for OA ({appliedShortlisted.length})
+                          </span>
+                          <span className="text-[11px] text-slate-400 hidden sm:inline">
+                            Active placement drives
+                          </span>
+                        </div>
+                        {appliedShortlisted.length > 1 && !searchQuery.trim() && (
+                          <span className="flex items-center gap-1 text-[11px] text-slate-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                            <span>Drag cards to reorder</span>
+                          </span>
+                        )}
+                      </div>
 
-                  <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-                    {filteredCompanies.map((company) => (
-                      <CompanyCard
-                        key={company.id}
-                        company={company}
-                        onEdit={openEditCompanyModal}
-                        onDelete={handleDeleteCompany}
-                        onQuickStatusChange={handleQuickStatusChange}
-                        onUpdateOAStatus={handleUpdateOAStatus}
-                        draggable={!searchQuery.trim()}
-                        onDragStart={handleDragStart}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        onDragEnd={handleDragEnd}
-                        isDragging={draggedCompanyId === company.id}
-                        isDragOver={dragOverCompanyId === company.id}
-                      />
-                    ))}
+                      {appliedShortlisted.length > 0 ? (
+                        <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+                          {appliedShortlisted.map((company) => (
+                            <CompanyCard
+                              key={company.id}
+                              company={company}
+                              onEdit={openEditCompanyModal}
+                              onDelete={handleDeleteCompany}
+                              onQuickStatusChange={handleQuickStatusChange}
+                              onUpdateOAStatus={handleUpdateOAStatus}
+                              draggable={!searchQuery.trim()}
+                              onDragStart={handleDragStart}
+                              onDragOver={handleDragOver}
+                              onDragLeave={handleDragLeave}
+                              onDrop={handleDrop}
+                              onDragEnd={handleDragEnd}
+                              isDragging={draggedCompanyId === company.id}
+                              isDragOver={dragOverCompanyId === company.id}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-xl bg-[#131B2E]/60 border border-slate-800 text-center text-xs text-slate-400">
+                          {searchQuery.trim()
+                            ? 'No shortlisted companies match your search.'
+                            : 'No companies in the active shortlisted group.'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* SECTION 2: NOT SHORTLISTED FOR OA (BOTTOM, KEPT BELOW) */}
+                    {appliedNotShortlisted.length > 0 && (
+                      <div className="pt-2 space-y-2">
+                        <div className="h-px bg-gradient-to-r from-transparent via-slate-800 to-transparent my-1" />
+
+                        <div 
+                          onClick={() => setIsNotShortlistedCollapsed(!isNotShortlistedCollapsed)}
+                          className="flex items-center justify-between text-xs px-1 py-1 cursor-pointer select-none group"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                              <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                              Not Shortlisted for OA ({appliedNotShortlisted.length})
+                            </span>
+                            <span className="text-[11px] text-slate-400 hidden sm:inline">
+                              Applied, but not shortlisted to write OA
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {!isNotShortlistedCollapsed && appliedNotShortlisted.length > 1 && !searchQuery.trim() && (
+                              <span className="flex items-center gap-1 text-[11px] text-slate-400 hidden sm:flex">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
+                                <span>Drag to reorder</span>
+                              </span>
+                            )}
+                            <div className="w-6 h-6 rounded-md bg-slate-800/60 border border-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-white transition-colors">
+                              {isNotShortlistedCollapsed ? (
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              ) : (
+                                <ChevronUp className="w-3.5 h-3.5 text-rose-400" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {!isNotShortlistedCollapsed && (
+                          <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 animate-fadeIn">
+                            {appliedNotShortlisted.map((company) => (
+                              <CompanyCard
+                                key={company.id}
+                                company={company}
+                                onEdit={openEditCompanyModal}
+                                onDelete={handleDeleteCompany}
+                                onQuickStatusChange={handleQuickStatusChange}
+                                onUpdateOAStatus={handleUpdateOAStatus}
+                                draggable={!searchQuery.trim()}
+                                onDragStart={handleDragStart}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                                onDragEnd={handleDragEnd}
+                                isDragging={draggedCompanyId === company.id}
+                                isDragOver={dragOverCompanyId === company.id}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
+                ) : (
+                  /* SKIPPED TAB VIEW */
+                  <div className="space-y-2">
+                    {filteredCompanies.length > 1 && !searchQuery.trim() && (
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                        <span>{filteredCompanies.length} companies</span>
+                        <span className="flex items-center gap-1 text-slate-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block animate-pulse" />
+                          <span>Drag cards to reorder</span>
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+                      {filteredCompanies.map((company) => (
+                        <CompanyCard
+                          key={company.id}
+                          company={company}
+                          onEdit={openEditCompanyModal}
+                          onDelete={handleDeleteCompany}
+                          onQuickStatusChange={handleQuickStatusChange}
+                          onUpdateOAStatus={handleUpdateOAStatus}
+                          draggable={!searchQuery.trim()}
+                          onDragStart={handleDragStart}
+                          onDragOver={handleDragOver}
+                          onDragLeave={handleDragLeave}
+                          onDrop={handleDrop}
+                          onDragEnd={handleDragEnd}
+                          isDragging={draggedCompanyId === company.id}
+                          isDragOver={dragOverCompanyId === company.id}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )
               ) : (
                 /* Clean Empty State */
                 <div className="bg-[#131B2E] border border-slate-800 rounded-2xl p-10 text-center my-4">

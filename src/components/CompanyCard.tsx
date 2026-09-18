@@ -145,7 +145,9 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
           ? 'border-indigo-500 ring-2 ring-indigo-500/40 bg-[#162038] scale-[1.01]' 
           : isDragging 
             ? 'opacity-40 border-dashed border-slate-600' 
-            : 'border-slate-800/90 hover:border-indigo-500/30'
+            : isApplied && isNotShortlistedForOA
+              ? 'border-rose-950/60 bg-[#121624] hover:border-rose-800/60'
+              : 'border-slate-800/90 hover:border-indigo-500/30'
       }`}
     >
       
@@ -154,7 +156,7 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
         onClick={() => setIsExpanded(!isExpanded)}
         className="px-4 py-3.5 flex items-center justify-between gap-3 cursor-pointer select-none group"
       >
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {draggable && (
             <div 
               className="text-slate-600 group-hover:text-slate-400 cursor-grab active:cursor-grabbing p-0.5 -ml-1 transition-colors shrink-0" 
@@ -167,6 +169,17 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
           <h3 className="text-base font-bold text-white tracking-tight leading-tight truncate group-hover:text-indigo-300 transition-colors">
             {company.name}
           </h3>
+
+          {/* Red indicator tag for OA Not Shortlisted */}
+          {isApplied && isNotShortlistedForOA && (
+            <span 
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 shrink-0"
+              title={`Not shortlisted for OA${oaRejectionTags.length ? `: ${oaRejectionTags.join(', ')}` : ''}`}
+            >
+              <XCircle className="w-3 h-3 text-rose-400 shrink-0" />
+              <span className="hidden sm:inline">Not Shortlisted</span>
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
