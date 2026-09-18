@@ -2,6 +2,21 @@
 <html lang="en" class="dark" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Automatically enforce HTTPS in production (Chrome strictly disables PWAs & install prompts on insecure HTTP)
+      if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        location.replace('https://' + location.host + location.pathname + location.search + location.hash);
+      }
+      // Early capture of beforeinstallprompt so the event is never missed before React mounts
+      window.__deferredInstallPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__deferredInstallPrompt = e;
+        if (typeof window.__onBeforeInstallPrompt === 'function') {
+          window.__onBeforeInstallPrompt(e);
+        }
+      });
+    </script>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0B0F19" />

@@ -7,11 +7,13 @@ import {
   GraduationCap, 
   ChevronDown, 
   ChevronUp, 
-  Sparkles,
-  Lock,
-  Share,
-  PlusSquare,
-  Code2
+  Sparkles, 
+  Lock, 
+  Share, 
+  Code2, 
+  Monitor, 
+  AlertTriangle,
+  HelpCircle
 } from 'lucide-react';
 
 interface InstallPromptModalProps {
@@ -27,34 +29,49 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
 }) => {
   const [isKnowMoreOpen, setIsKnowMoreOpen] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [showManualGuide, setShowManualGuide] = useState(false);
 
   if (!isOpen) return null;
 
-  // Check if device is iOS (Safari doesn't support beforeinstallprompt)
+  // Platform detection
   const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+  const isDesktop = !isIOS && !isAndroid;
+
+  // Protocol detection: Chrome disables PWAs on insecure HTTP (showing "Not secure")
+  const isHttp = typeof window !== 'undefined' && window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+
+  const handleSwitchToHttps = () => {
+    if (typeof window !== 'undefined') {
+      window.location.href = window.location.href.replace('http:', 'https:');
+    }
+  };
 
   const handleInstallClick = async () => {
+    // If on insecure HTTP, redirect to HTTPS where Chrome allows installation
+    if (isHttp) {
+      handleSwitchToHttps();
+      return;
+    }
+
     if (deferredPrompt) {
       setIsInstalling(true);
       try {
         await deferredPrompt.prompt();
         const choice = await deferredPrompt.userChoice;
-        if (choice.outcome === 'accepted') {
+        if (choice?.outcome === 'accepted') {
           console.log('[PWA] User accepted installation prompt');
         }
       } catch (err) {
         console.error('[PWA] Installation prompt failed:', err);
+        setShowManualGuide(true);
       } finally {
         setIsInstalling(false);
         onClose();
       }
     } else {
-      // If deferredPrompt is unavailable (e.g. desktop manual or iOS), show guide or auto-close
-      if (!isIOS) {
-        // Trigger browser's install if available or prompt guide
-        alert('To add to home screen, click the install icon in your browser address bar or menu (⋮) -> "Install app".');
-        onClose();
-      }
+      // If deferredPrompt is unavailable, smoothly reveal the in-modal step-by-step guide
+      setShowManualGuide(true);
     }
   };
 
@@ -64,7 +81,7 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-sm bg-[#131B2E] border border-indigo-500/40 rounded-3xl shadow-2xl shadow-indigo-950/50 overflow-hidden flex flex-col text-left relative"
+        className="w-full max-w-sm bg-[#131B2E] border border-indigo-500/40 rounded-3xl shadow-2xl shadow-indigo-950/50 overflow-hidden flex flex-col text-left relative max-h-[92vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Glow ambient background effect */}
@@ -84,7 +101,11 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
         <div className="p-5 pb-3 flex items-start gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 p-0.5 shadow-lg shadow-indigo-500/30 shrink-0 flex items-center justify-center">
             <div className="w-full h-full bg-[#0B0F19] rounded-[14px] flex items-center justify-center">
-              <Smartphone className="w-6 h-6 text-indigo-400" />
+              {isDesktop ? (
+                <Monitor className="w-6 h-6 text-indigo-400" />
+              ) : (
+                <Smartphone className="w-6 h-6 text-indigo-400" />
+              )}
             </div>
           </div>
           
@@ -96,7 +117,7 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
               </span>
             </div>
             <h3 className="text-base font-bold text-white tracking-tight leading-snug">
-              Add icon to home screen
+              {isDesktop ? 'Install on Desktop / Laptop' : 'Add icon to home screen'}
             </h3>
             <p className="text-[11px] text-slate-400 leading-tight">
               One-tap offline access for your placement drives
@@ -119,16 +140,75 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
             </div>
           </div>
 
-          {/* iOS Safari Guided Notice (if on iPhone) */}
-          {isIOS && (
-            <div className="p-3 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-slate-200 space-y-2">
-              <p className="font-semibold text-indigo-300 flex items-center gap-1.5 text-[11px]">
-                <Share className="w-3.5 h-3.5" /> How to install on iOS:
+          {/* Insecure HTTP Warning Banner */}
+          {isHttp && (
+            <div className="p-3.5 rounded-2xl bg-amber-950/60 border border-amber-500/50 text-amber-200 text-xs space-y-2.5 animate-fadeIn">
+              <div className="flex items-center gap-1.5 font-bold text-amber-300 text-xs">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Switch to Secure HTTPS to Install</span>
+              </div>
+              <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                Your browser shows <strong>&quot;Not secure&quot;</strong>. Google Chrome strictly disables app installation on unencrypted HTTP. Tap below to switch to encrypted HTTPS.
               </p>
-              <ol className="text-[11px] text-slate-300 space-y-1 list-decimal list-inside leading-relaxed">
-                <li>Tap the <strong className="text-white">Share</strong> button below in Safari.</li>
-                <li>Scroll down and tap <strong className="text-white flex-inline items-center gap-1"><PlusSquare className="w-3 h-3 inline" /> Add to Home Screen</strong>.</li>
-              </ol>
+              <button
+                type="button"
+                onClick={handleSwitchToHttps}
+                className="w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-md"
+              >
+                Switch to Secure HTTPS Now
+              </button>
+            </div>
+          )}
+
+          {/* Interactive Guided Installation (shown on iOS or when manual guide requested or deferredPrompt missing) */}
+          {(isIOS || showManualGuide || (!deferredPrompt && !isHttp)) && (
+            <div className="p-3.5 rounded-2xl bg-indigo-950/50 border border-indigo-500/40 text-xs text-slate-200 space-y-2.5 animate-fadeIn">
+              <div className="flex items-center justify-between text-indigo-300 font-bold text-xs">
+                <span className="flex items-center gap-1.5">
+                  <HelpCircle className="w-4 h-4 text-indigo-400" />
+                  {isDesktop ? 'Desktop Chrome / Edge Install Guide' : isIOS ? 'Apple Safari Install Guide' : 'Android Chrome Install Guide'}
+                </span>
+              </div>
+
+              {isDesktop && (
+                <div className="space-y-2 text-[11px] text-slate-300">
+                  <div className="p-2.5 rounded-xl bg-[#0B0F19]/90 border border-slate-800 space-y-1">
+                    <strong className="text-white flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-indigo-600 text-[10px] flex items-center justify-center text-white shrink-0">1</span>
+                      Address Bar Icon (Fastest)
+                    </strong>
+                    <p className="text-slate-400 leading-relaxed pl-5">
+                      Look at the right end of your address/URL bar for the <span className="text-indigo-300 font-semibold">Install icon</span> (monitor with a downward arrow) and click <strong>Install</strong>.
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-[#0B0F19]/90 border border-slate-800 space-y-1">
+                    <strong className="text-white flex items-center gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-indigo-600 text-[10px] flex items-center justify-center text-white shrink-0">2</span>
+                      Via Chrome Menu
+                    </strong>
+                    <p className="text-slate-400 leading-relaxed pl-5">
+                      Click <strong>Three Dots (⋮)</strong> in top-right ➡️ <strong>&quot;Cast, save and share&quot;</strong> ➡️ Click <strong>&quot;Install TrackMyCompany&quot;</strong> (or <strong>&quot;Create shortcut...&quot;</strong> and check <em>Open as window</em>).
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {isAndroid && (
+                <ol className="text-[11px] text-slate-300 space-y-1.5 list-decimal list-inside leading-relaxed">
+                  <li>Tap the <strong>Three Dots (⋮)</strong> menu in the top-right corner of Chrome.</li>
+                  <li>Tap <strong>&quot;Install app&quot;</strong> or <strong>&quot;Add to Home screen&quot;</strong>.</li>
+                  <li>Confirm by tapping <strong>Add / Install</strong>.</li>
+                </ol>
+              )}
+
+              {isIOS && (
+                <ol className="text-[11px] text-slate-300 space-y-1.5 list-decimal list-inside leading-relaxed">
+                  <li>Tap the <strong>Share</strong> button <Share className="w-3 h-3 inline text-indigo-400 mx-0.5" /> at the bottom in Safari.</li>
+                  <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+                  <li>Tap <strong>Add</strong> in the top-right corner.</li>
+                </ol>
+              )}
             </div>
           )}
 
@@ -158,7 +238,7 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
                 <div className="flex items-start gap-2">
                   <Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
-                    <strong className="text-emerald-400">100% Safe & Secure:</strong> No passwords, no login, and zero external tracking. All data is saved exclusively inside your phone's private IndexedDB storage.
+                    <strong className="text-emerald-400">100% Safe & Secure:</strong> No passwords, no login, and zero external tracking. All data is saved exclusively inside your browser's private IndexedDB storage.
                   </p>
                 </div>
 
@@ -188,15 +268,33 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
 
           {/* Action Buttons */}
           <div className="space-y-2 pt-1">
-            {!isIOS && (
+            {isHttp ? (
+              <button
+                type="button"
+                onClick={handleSwitchToHttps}
+                className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <AlertTriangle className="w-4 h-4" />
+                <span>Switch to Secure HTTPS to Enable Install</span>
+              </button>
+            ) : deferredPrompt ? (
               <button
                 type="button"
                 onClick={handleInstallClick}
                 disabled={isInstalling}
                 className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-[0.98] text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Smartphone className="w-4 h-4" />
-                <span>{isInstalling ? 'Installing...' : 'Add to Home Screen'}</span>
+                {isDesktop ? <Monitor className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
+                <span>{isInstalling ? 'Installing...' : isDesktop ? 'Install App on Desktop' : 'Add to Home Screen'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowManualGuide(true)}
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-[0.98] text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isDesktop ? <Monitor className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
+                <span>{showManualGuide ? 'See Steps Above' : 'View Installation Steps'}</span>
               </button>
             )}
 
@@ -205,7 +303,7 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
               onClick={onClose}
               className="w-full py-2 px-4 bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-medium rounded-xl transition-colors cursor-pointer"
             >
-              Maybe later
+              Close
             </button>
           </div>
 

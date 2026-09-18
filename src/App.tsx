@@ -198,14 +198,29 @@ export const App: React.FC = () => {
 
   // Handle PWA installation prompt & daily trigger
   useEffect(() => {
+    // Check if early capture script in index.html already caught beforeinstallprompt
+    if (typeof window !== 'undefined' && (window as any).__deferredInstallPrompt) {
+      setDeferredInstallPrompt((window as any).__deferredInstallPrompt);
+    }
+
+    // Set callback for early capture
+    if (typeof window !== 'undefined') {
+      (window as any).__onBeforeInstallPrompt = (e: any) => {
+        setDeferredInstallPrompt(e);
+      };
+    }
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      (window as any).__deferredInstallPrompt = e;
       setDeferredInstallPrompt(e);
     };
 
     const handleAppInstalled = () => {
       setIsStandalone(true);
       setIsInstallPromptOpen(false);
+      (window as any).__deferredInstallPrompt = null;
+      setDeferredInstallPrompt(null);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);

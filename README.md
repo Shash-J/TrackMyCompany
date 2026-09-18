@@ -83,11 +83,11 @@ Many students hesitate when a browser prompts them to *"Install App"* or *"Add t
 ---
 
 ### Method 3: On Laptop & PC (Chrome / Edge / Brave)
-1. Open [https://trackmycompany.online](https://trackmycompany.online) on your computer.
-2. In the right side of the address bar (URL bar), click the **Install icon** (monitor with a downward arrow).
-   - *Alternatively:* Click the **Three Dots (⋮)** ➡️ **"Cast, save, and share"** / **"Apps"** ➡️ **"Install TrackMyCompany"**.
-3. Click **Install**.
-4. The app opens in an independent desktop window. Pin it to your **Windows Taskbar** or **macOS Dock** for one-click access throughout placement season.
+1. Open [https://trackmycompany.online](https://trackmycompany.online) on your computer (make sure it is `https://` with the secure lock icon).
+2. **Option A (Fastest — Address Bar):** In the right side of Chrome's address bar (URL bar), click the **Install icon** (monitor with a downward arrow) ➡️ click **Install**.
+3. **Option B (Chrome Menu):** Click the **Three Dots (⋮)** ➡️ **"Cast, save, and share"** ➡️ **"Install TrackMyCompany"**.
+4. **Option C (Universal Shortcut):** Click the **Three Dots (⋮)** ➡️ **"Cast, save, and share"** ➡️ **"Create shortcut..."** ➡️ check **"Open as window"** ➡️ click **Create**.
+5. TrackMyCompany opens in an independent desktop window with its own icon. Pin it to your **Windows Taskbar** or **macOS Dock** for one-click access throughout placement season.
 
 ---
 
