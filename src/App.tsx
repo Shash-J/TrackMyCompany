@@ -8,6 +8,7 @@ import {
   Calendar,
   Clock,
   CheckCircle2,
+  XCircle,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -16,8 +17,58 @@ import type {
   StudentProfile, 
   OAShortlistStatus, 
   ApplicationStatus,
-  OARejectionReasonTag
+  OARejectionReasonTag,
+  RejectionReasonTag
 } from './types';
+
+/**
+ * Safely parse various date string formats (YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY)
+ * to local midnight timestamp, avoiding timezone skew.
+ */
+const parseDateToTimestamp = (dateStr?: string): number | null => {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const s = dateStr.trim();
+  if (!s) return null;
+
+  // 1. Check YYYY-MM-DD or YYYY/MM/DD
+  const ymdMatch = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (ymdMatch) {
+    const y = parseInt(ymdMatch[1], 10);
+    const m = parseInt(ymdMatch[2], 10) - 1;
+    const d = parseInt(ymdMatch[3], 10);
+    const date = new Date(y, m, d);
+    date.setHours(0, 0, 0, 0);
+    return isNaN(date.getTime()) ? null : date.getTime();
+  }
+
+  // 2. Check DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+  if (dmyMatch) {
+    const d = parseInt(dmyMatch[1], 10);
+    const m = parseInt(dmyMatch[2], 10) - 1;
+    const y = parseInt(dmyMatch[3], 10);
+    const date = new Date(y, m, d);
+    date.setHours(0, 0, 0, 0);
+    return isNaN(date.getTime()) ? null : date.getTime();
+  }
+
+  // 3. Fallback to standard Date parsing
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    parsed.setHours(0, 0, 0, 0);
+    return parsed.getTime();
+  }
+
+  return null;
+};
+
+const formatDriveDate = (dateStr: string): string => {
+  const ts = parseDateToTimestamp(dateStr);
+  if (ts !== null) {
+    return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+  return dateStr;
+};
 import { 
   getCompanies, 
   saveCompanies, 
@@ -203,25 +254,44 @@ export const App: React.FC = () => {
   // Compute Statistics
   const stats = useMemo(() => calculateStatistics(companies), [companies]);
 
-  // Upcoming Drives: Immediate next coming company and full list of upcoming drives (excludes not_shortlisted drives)
+  // Upcoming Drives: Immediate next coming company and full list of upcoming drives
+  // Prioritizes applied scheduled drives; if none or when toggled to skipped, auto-advances to next scheduled upcoming drive
   const { immediateNextDrive, allUpcomingDrives } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const drives = companies
-      .filter((c) => c.status === 'applied' && !!c.oaDate && c.oaStatus !== 'not_shortlisted')
-      .sort((a, b) => new Date(a.oaDate!).getTime() - new Date(b.oaDate!).getTime());
+    const todayMs = today.getTime();
 
-    if (drives.length === 0) {
+    // Map and filter all companies that have a valid drive date
+    const withDates = companies
+      .map((c) => ({
+        company: c,
+        timestamp: parseDateToTimestamp(c.oaDate),
+      }))
+      .filter((item): item is { company: Company; timestamp: number } => item.timestamp !== null)
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    if (withDates.length === 0) {
       return { immediateNextDrive: null, allUpcomingDrives: [] };
     }
 
-    const futureDrives = drives.filter((c) => new Date(c.oaDate!).getTime() >= today.getTime());
-    const list = futureDrives.length > 0 ? futureDrives : drives;
-    const nextComing = futureDrives.length > 0 ? futureDrives[0] : drives[0];
+    // Future scheduled drives (>= today)
+    const futureDrives = withDates.filter((item) => item.timestamp >= todayMs);
+    const activePool = futureDrives.length > 0 ? futureDrives : withDates;
+
+    // First priority: Applied drives (not rejected for OA)
+    const appliedDrives = activePool.filter(
+      (item) => item.company.status === 'applied' && item.company.oaStatus !== 'not_shortlisted'
+    );
+
+    // If applied drives exist in the active pool, immediateNextDrive is the earliest applied drive.
+    // If no applied drives exist (e.g. user toggled to skipped or has only skipped drives):
+    // Auto-advance to the earliest scheduled drive in the pool rather than disappearing!
+    const nextComing = appliedDrives.length > 0 ? appliedDrives[0].company : activePool[0].company;
+    const allDrives = activePool.map((item) => item.company);
 
     return {
       immediateNextDrive: nextComing,
-      allUpcomingDrives: list,
+      allUpcomingDrives: allDrives,
     };
   }, [companies]);
 
@@ -268,7 +338,12 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleQuickStatusChange = async (id: string, newStatus: 'applied' | 'not_applied') => {
+  const handleQuickStatusChange = async (
+    id: string, 
+    newStatus: 'applied' | 'not_applied',
+    rejectionReasonTags?: RejectionReasonTag[],
+    customReasonNote?: string
+  ) => {
     const target = companies.find((c) => c.id === id);
     if (!target) return;
 
@@ -277,11 +352,15 @@ export const App: React.FC = () => {
         ...target,
         status: 'applied',
         oaStatus: target.oaStatus || 'shortlisted',
+        rejectionReasonTags: undefined,
+        customReasonNote: undefined,
       });
     } else {
       await updateCompany({
         ...target,
         status: 'not_applied',
+        rejectionReasonTags: rejectionReasonTags && rejectionReasonTags.length > 0 ? rejectionReasonTags : (target.rejectionReasonTags || ['Others']),
+        customReasonNote: customReasonNote !== undefined ? customReasonNote : target.customReasonNote,
       });
     }
     const fresh = await getCompanies();
@@ -509,10 +588,12 @@ export const App: React.FC = () => {
   const getDaysRemainingBadge = (dateStr: string) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const target = new Date(dateStr);
-    target.setHours(0, 0, 0, 0);
+    const targetMs = parseDateToTimestamp(dateStr);
+    if (targetMs === null) {
+      return { text: dateStr, color: 'bg-slate-800 text-slate-400 border-slate-700' };
+    }
 
-    const diffTime = target.getTime() - today.getTime();
+    const diffTime = targetMs - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
@@ -629,15 +710,20 @@ export const App: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Date & OA Status */}
+                          {/* Date & OA / Application Status */}
                           <div className="pt-2 border-t border-slate-800/70 flex items-center justify-between text-xs">
                             <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
                               <Clock className="w-3 h-3 text-amber-400" />
-                              {new Date(drive.oaDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              {formatDriveDate(drive.oaDate!)}
                             </span>
 
                             <div className="flex items-center gap-1.5">
-                              {drive.oaStatus === 'shortlisted' ? (
+                              {drive.status === 'not_applied' ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
+                                  <XCircle className="w-2.5 h-2.5" />
+                                  Skipped{drive.rejectionReasonTags?.length ? ` (${drive.rejectionReasonTags[0]})` : ''}
+                                </span>
+                              ) : drive.oaStatus === 'shortlisted' ? (
                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
                                   <CheckCircle2 className="w-2.5 h-2.5" />
                                   Selected
@@ -650,7 +736,7 @@ export const App: React.FC = () => {
 
                               <button
                                 onClick={() => openEditCompanyModal(drive)}
-                                className="text-[10px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 border border-slate-700 active:scale-95"
+                                className="text-[10px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 border border-slate-700 active:scale-95 cursor-pointer"
                               >
                                 Edit
                               </button>
