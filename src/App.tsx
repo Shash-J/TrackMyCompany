@@ -226,28 +226,6 @@ export const App: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Check if running in standalone mode (already installed as PWA)
-    const isCurrentlyStandalone = 
-      (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || 
-      (typeof navigator !== 'undefined' && (navigator as any).standalone === true);
-
-    if (!isCurrentlyStandalone) {
-      const today = getLocalDateString();
-      const lastShown = localStorage.getItem('track_my_company_last_install_prompt_date');
-      if (lastShown !== today) {
-        // Show after brief initial delay
-        const timer = setTimeout(() => {
-          setIsInstallPromptOpen(true);
-          localStorage.setItem('track_my_company_last_install_prompt_date', today);
-        }, 2200);
-        return () => {
-          clearTimeout(timer);
-          window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-          window.removeEventListener('appinstalled', handleAppInstalled);
-        };
-      }
-    }
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
@@ -404,14 +382,14 @@ export const App: React.FC = () => {
       const fresh = await getCompanies();
       setCompanies(fresh);
 
-      // Trigger install prompt every time they enter a new company (if not running as installed PWA)
-      const isStandalone = 
+      // Trigger install prompt whenever a user adds a new company (if not running as installed PWA)
+      const isStandaloneMode = 
         (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || 
         (typeof navigator !== 'undefined' && (navigator as any).standalone === true);
-      if (!isStandalone) {
+      if (!isStandaloneMode) {
         setTimeout(() => {
           setIsInstallPromptOpen(true);
-        }, 700);
+        }, 600);
       }
     }
   };
@@ -604,6 +582,17 @@ export const App: React.FC = () => {
     setCompanies(merged);
     setJustImported(true);
     setCurrentTab('dashboard');
+
+    if (newItems.length > 0) {
+      const isStandaloneMode = 
+        (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || 
+        (typeof navigator !== 'undefined' && (navigator as any).standalone === true);
+      if (!isStandaloneMode) {
+        setTimeout(() => {
+          setIsInstallPromptOpen(true);
+        }, 700);
+      }
+    }
   };
 
   // Navigation Tab Handler with browser history support
