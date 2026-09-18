@@ -1,5 +1,5 @@
 // TrackMyCompany PWA Service Worker
-const CACHE_NAME = 'trackmycompany-v1.1.0';
+const CACHE_NAME = 'trackmycompany-v1.3.0';
 
 const PRECACHE_ASSETS = [
   './',
@@ -47,6 +47,13 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
+
+  // Enforce HTTPS inside Service Worker for all non-localhost navigations
+  if (url.protocol === 'http:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
+    const secureUrl = 'https://' + url.host + url.pathname + url.search + url.hash;
+    event.respondWith(Response.redirect(secureUrl, 301));
+    return;
+  }
 
   // 1. Navigation requests (HTML document): Network-first with Cache fallback
   if (request.mode === 'navigate') {
