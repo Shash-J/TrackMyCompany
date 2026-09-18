@@ -10,7 +10,8 @@ import {
   Sparkles,
   Lock,
   Share,
-  PlusSquare
+  PlusSquare,
+  Code2
 } from 'lucide-react';
 
 interface InstallPromptModalProps {
@@ -114,7 +115,7 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
             </div>
             <div className="p-2.5 rounded-xl bg-[#0B0F19]/80 border border-slate-800 flex items-center gap-2 text-slate-300">
               <GraduationCap className="w-4 h-4 text-purple-400 shrink-0" />
-              <span>Built for RVCE</span>
+              <span>Built for RVCE students</span>
             </div>
           </div>
 
@@ -162,6 +163,13 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
                 </div>
 
                 <div className="flex items-start gap-2">
+                  <Code2 className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">
+                    <strong className="text-cyan-300">Open Source & Private:</strong> Open source, no cloud storage, 100% private, and no login. Your personal placement data never leaves your device.
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-2">
                   <WifiOff className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
                     <strong className="text-indigo-300">No Internet Required:</strong> Even on weak campus Wi-Fi or airplane mode, you can instantly check drive dates, eligibility, and your application status.
@@ -171,7 +179,7 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
                 <div className="flex items-start gap-2">
                   <GraduationCap className="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
-                    <strong className="text-purple-300">Exclusively for RVCE Students:</strong> Tailored specifically for RVCE placement seasons to eliminate annoying spreadsheets and WhatsApp chaos.
+                    <strong className="text-purple-300">Built for RVCE Students:</strong> Tailored specifically for RVCE placement seasons to eliminate annoying spreadsheets and WhatsApp chaos.
                   </p>
                 </div>
               </div>

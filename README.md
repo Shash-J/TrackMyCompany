@@ -184,4 +184,4 @@ Every commit pushed to the `main` branch automatically triggers the GitHub Actio
 
 - Licensed under the [MIT License](LICENSE).
 - Built with ❤️ exclusively for college students navigating campus placements.
-- UI styling and design inspired by the sleek dark-mode aesthetics of [Last Minute Placement Prep](https://www.lastminuteplacementprep.in/).
+
