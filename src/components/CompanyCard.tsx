@@ -145,9 +145,7 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
           ? 'border-indigo-500 ring-2 ring-indigo-500/40 bg-[#162038] scale-[1.01]' 
           : isDragging 
             ? 'opacity-40 border-dashed border-slate-600' 
-            : isApplied && isNotShortlistedForOA
-              ? 'border-rose-950/60 bg-[#121624] hover:border-rose-800/60'
-              : 'border-slate-800/90 hover:border-indigo-500/30'
+            : 'border-slate-800/90 hover:border-indigo-500/30'
       }`}
     >
       
@@ -170,15 +168,12 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
             {company.name}
           </h3>
 
-          {/* Red indicator tag for OA Not Shortlisted */}
+          {/* Minimal small red dot indicating not selected/shortlisted for OA */}
           {isApplied && isNotShortlistedForOA && (
             <span 
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 shrink-0"
+              className="w-2 h-2 rounded-full bg-rose-500 shrink-0 shadow-xs shadow-rose-500/60"
               title={`Not shortlisted for OA${oaRejectionTags.length ? `: ${oaRejectionTags.join(', ')}` : ''}`}
-            >
-              <XCircle className="w-3 h-3 text-rose-400 shrink-0" />
-              <span className="hidden sm:inline">Not Shortlisted</span>
-            </span>
+            />
           )}
         </div>
 

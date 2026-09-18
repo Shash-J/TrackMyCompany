@@ -113,7 +113,6 @@ export const App: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'applied' | 'not_applied'>('applied');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
-  const [isNotShortlistedCollapsed, setIsNotShortlistedCollapsed] = useState(false);
 
   // Modals
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -860,115 +859,76 @@ export const App: React.FC = () => {
               {/* Companies Feed: Grouped by Shortlisted vs Not Shortlisted in Applied tab */}
               {filteredCompanies.length > 0 ? (
                 statusFilter === 'applied' ? (
-                  <div className="space-y-4">
-                    {/* SECTION 1: SHORTLISTED FOR OA (TOP) */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs px-1">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                            Shortlisted for OA ({appliedShortlisted.length})
-                          </span>
-                          <span className="text-[11px] text-slate-400 hidden sm:inline">
-                            Active placement drives
-                          </span>
-                        </div>
-                        {appliedShortlisted.length > 1 && !searchQuery.trim() && (
-                          <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                            <span>Drag cards to reorder</span>
-                          </span>
-                        )}
+                  <div className="space-y-3">
+                    {/* Subtle count & reorder hint if multiple companies */}
+                    {filteredCompanies.length > 1 && !searchQuery.trim() && (
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                        <span>{filteredCompanies.length} companies</span>
+                        <span className="flex items-center gap-1 text-slate-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block animate-pulse" />
+                          <span>Drag cards to reorder</span>
+                        </span>
                       </div>
+                    )}
 
-                      {appliedShortlisted.length > 0 ? (
-                        <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-                          {appliedShortlisted.map((company) => (
-                            <CompanyCard
-                              key={company.id}
-                              company={company}
-                              onEdit={openEditCompanyModal}
-                              onDelete={handleDeleteCompany}
-                              onQuickStatusChange={handleQuickStatusChange}
-                              onUpdateOAStatus={handleUpdateOAStatus}
-                              draggable={!searchQuery.trim()}
-                              onDragStart={handleDragStart}
-                              onDragOver={handleDragOver}
-                              onDragLeave={handleDragLeave}
-                              onDrop={handleDrop}
-                              onDragEnd={handleDragEnd}
-                              isDragging={draggedCompanyId === company.id}
-                              isDragOver={dragOverCompanyId === company.id}
-                            />
-                          ))}
-                        </div>
-                      ) : (
+                    {/* Active / Shortlisted group */}
+                    {appliedShortlisted.length > 0 ? (
+                      <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+                        {appliedShortlisted.map((company) => (
+                          <CompanyCard
+                            key={company.id}
+                            company={company}
+                            onEdit={openEditCompanyModal}
+                            onDelete={handleDeleteCompany}
+                            onQuickStatusChange={handleQuickStatusChange}
+                            onUpdateOAStatus={handleUpdateOAStatus}
+                            draggable={!searchQuery.trim()}
+                            onDragStart={handleDragStart}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            onDragEnd={handleDragEnd}
+                            isDragging={draggedCompanyId === company.id}
+                            isDragOver={dragOverCompanyId === company.id}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      searchQuery.trim() && (
                         <div className="p-4 rounded-xl bg-[#131B2E]/60 border border-slate-800 text-center text-xs text-slate-400">
-                          {searchQuery.trim()
-                            ? 'No shortlisted companies match your search.'
-                            : 'No companies in the active shortlisted group.'}
+                          No active companies match your search.
                         </div>
-                      )}
-                    </div>
+                      )
+                    )}
 
-                    {/* SECTION 2: NOT SHORTLISTED FOR OA (BOTTOM, KEPT BELOW) */}
+                    {/* Line separation between the two groups */}
+                    {appliedShortlisted.length > 0 && appliedNotShortlisted.length > 0 && (
+                      <div className="py-2">
+                        <div className="h-px bg-slate-800/80 w-full" />
+                      </div>
+                    )}
+
+                    {/* Not Shortlisted group (kept below, each card has a small red dot) */}
                     {appliedNotShortlisted.length > 0 && (
-                      <div className="pt-2 space-y-2">
-                        <div className="h-px bg-gradient-to-r from-transparent via-slate-800 to-transparent my-1" />
-
-                        <div 
-                          onClick={() => setIsNotShortlistedCollapsed(!isNotShortlistedCollapsed)}
-                          className="flex items-center justify-between text-xs px-1 py-1 cursor-pointer select-none group"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30">
-                              <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                              Not Shortlisted for OA ({appliedNotShortlisted.length})
-                            </span>
-                            <span className="text-[11px] text-slate-400 hidden sm:inline">
-                              Applied, but not shortlisted to write OA
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {!isNotShortlistedCollapsed && appliedNotShortlisted.length > 1 && !searchQuery.trim() && (
-                              <span className="flex items-center gap-1 text-[11px] text-slate-400 hidden sm:flex">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
-                                <span>Drag to reorder</span>
-                              </span>
-                            )}
-                            <div className="w-6 h-6 rounded-md bg-slate-800/60 border border-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-white transition-colors">
-                              {isNotShortlistedCollapsed ? (
-                                <ChevronDown className="w-3.5 h-3.5" />
-                              ) : (
-                                <ChevronUp className="w-3.5 h-3.5 text-rose-400" />
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {!isNotShortlistedCollapsed && (
-                          <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 animate-fadeIn">
-                            {appliedNotShortlisted.map((company) => (
-                              <CompanyCard
-                                key={company.id}
-                                company={company}
-                                onEdit={openEditCompanyModal}
-                                onDelete={handleDeleteCompany}
-                                onQuickStatusChange={handleQuickStatusChange}
-                                onUpdateOAStatus={handleUpdateOAStatus}
-                                draggable={!searchQuery.trim()}
-                                onDragStart={handleDragStart}
-                                onDragOver={handleDragOver}
-                                onDragLeave={handleDragLeave}
-                                onDrop={handleDrop}
-                                onDragEnd={handleDragEnd}
-                                isDragging={draggedCompanyId === company.id}
-                                isDragOver={dragOverCompanyId === company.id}
-                              />
-                            ))}
-                          </div>
-                        )}
+                      <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+                        {appliedNotShortlisted.map((company) => (
+                          <CompanyCard
+                            key={company.id}
+                            company={company}
+                            onEdit={openEditCompanyModal}
+                            onDelete={handleDeleteCompany}
+                            onQuickStatusChange={handleQuickStatusChange}
+                            onUpdateOAStatus={handleUpdateOAStatus}
+                            draggable={!searchQuery.trim()}
+                            onDragStart={handleDragStart}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            onDragEnd={handleDragEnd}
+                            isDragging={draggedCompanyId === company.id}
+                            isDragOver={dragOverCompanyId === company.id}
+                          />
+                        ))}
                       </div>
                     )}
                   </div>
