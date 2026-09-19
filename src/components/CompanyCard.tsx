@@ -466,7 +466,7 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
                       <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                      Mark as Not Shortlisted for OA
+                      Not Shortlisted for OA
                     </span>
                     <button
                       type="button"
@@ -560,7 +560,7 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
                     className="w-full sm:w-auto py-1.5 px-3 bg-slate-900 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-700/60 font-medium text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Mark as Not Shortlisted</span>
+                    <span>Not Shortlisted for OA</span>
                   </button>
                 </div>
               )}
