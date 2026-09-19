@@ -74,7 +74,7 @@ export const exportCompaniesToExcel = (
       { Property: 'Batch / Graduation Year', Value: profile.batch || '2027' },
       { Property: 'College / Institute', Value: profile.college || '' },
       { Property: 'Exported At', Value: new Date().toISOString() },
-      { Property: 'Source Application', Value: 'TrackMyCompany (Open Source)' },
+      { Property: 'Source Application', Value: 'TrackMyCompany (PolyForm Noncommercial 1.0.0)' },
     ];
     const profileWorksheet = XLSX.utils.json_to_sheet(profileRows);
     profileWorksheet['!cols'] = [

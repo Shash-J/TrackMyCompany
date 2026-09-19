@@ -49,11 +49,11 @@ export const Footer: React.FC = () => {
               </p>
             </div>
 
-            {/* 3. Open Source */}
+            {/* 3. Source Available */}
             <div className="space-y-1 pt-1 border-t border-slate-800/80 flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-purple-400 font-semibold text-xs">
                 <Code2 className="w-3.5 h-3.5" />
-                <span>Open Source</span>
+                <span>Source Available</span>
               </div>
 
               <a

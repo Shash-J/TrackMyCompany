@@ -7,7 +7,7 @@
 [![College Wi-Fi Mirror](https://img.shields.io/badge/Alternate%20Mirror-GitHub%20Pages-success?style=for-the-badge&logo=github)](https://shash-j.github.io/TrackMyCompany/)
 [![PWA](https://img.shields.io/badge/PWA-Installable%20%26%20100%25%20Offline-green.svg?style=for-the-badge)](https://web.dev/progressive-web-apps/)
 [![Privacy: 100% Local](https://img.shields.io/badge/Privacy-100%25%20Client--Side-blue.svg?style=for-the-badge)](#-100-privacy--data-safety-guarantee)
-[![License: MIT](https://img.shields.io/badge/License-MIT-gray.svg?style=for-the-badge)](LICENSE)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm_Noncommercial_1.0.0-blue.svg?style=for-the-badge)](LICENSE)
 
 ---
 
@@ -180,8 +180,38 @@ Every commit pushed to the `main` branch automatically triggers the GitHub Actio
 
 ---
 
-## ⚖️ License & Acknowledgements
+## ⚖️ License & Terms
 
-- Licensed under the [MIT License](LICENSE).
+TrackMyCompany is licensed under the **[PolyForm Noncommercial License 1.0.0](LICENSE)**.
+
+### 🎓 100% Free for Non-Commercial & Educational Use
+- **Students & Job Seekers:** Completely free forever to use, run, and install on your personal devices for your campus placement preparation.
+- **Academic & Educational Institutions:** Free for universities, colleges, student councils, placement cells, and academic research.
+- **Inspect, Fork & Modify:** You are free to view the source code, fork the repository, and make personal or non-commercial modifications, provided you preserve original copyright notices and terms.
+
+### 💼 Commercial Use (Separate License Required)
+**Any commercial use of TrackMyCompany is strictly prohibited under the PolyForm Noncommercial License 1.0.0 and requires a separate, paid commercial license.**
+
+Commercial use includes, but is not limited to:
+- **Paid Products & Services:** Integrating TrackMyCompany or its code into any paid placement-preparation product, interview prep platform, or career coaching service.
+- **SaaS & Cloud Platforms:** Running TrackMyCompany as a monetized Software-as-a-Service, subscription-based portal, or hosted commercial utility.
+- **White-Labeling & Reselling:** Re-branding, white-labeling, or distributing the software as part of a commercial product suite.
+- **Business Operations:** Enterprise usage or commercial training organizations outside of bona fide non-profit educational institutions.
+
+> [!NOTE]
+> **Copyright & Non-Exclusive Licensing:**  
+> The project maintainer retains full copyright and ownership of TrackMyCompany. Commercial licenses grant non-exclusive usage and distribution rights only, not project ownership.
+
+### 📬 Commercial Licensing Inquiries
+To obtain a commercial license or discuss business partnership opportunities, please contact:
+- **Maintainer:** Shashanka
+- **Email:** [`shasedujois@gmail.com`](mailto:shasedujois@gmail.com)
+- **Subject:** `[TrackMyCompany Commercial License Inquiry] - <Your Organization Name>`
+- **Repository:** [https://github.com/Shash-J/TrackMyCompany](https://github.com/Shash-J/TrackMyCompany)
+
+---
+
+## ❤️ Acknowledgements & Mission
+
 - Built with ❤️ exclusively for college students navigating campus placements.
 

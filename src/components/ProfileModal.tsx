@@ -168,7 +168,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
           )}
 
-          {/* About TrackMyCompany (Open Source, Privacy & Info) */}
+          {/* About TrackMyCompany (Source-Available, Privacy & Info) */}
           <div className="pt-4 border-t border-slate-800/80 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-300 flex items-center gap-1.5">
@@ -187,7 +187,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
 
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              100% Client-Side Privacy: All data is saved exclusively in your browser's local storage. Free and open-source project built for students.
+              100% Client-Side Privacy: All data is saved exclusively in your browser's local storage. Free for students & source-available for non-commercial use.
             </p>
           </div>
         </form>

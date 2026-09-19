@@ -157,12 +157,12 @@ export const AboutModal: React.FC<AboutModalProps> = ({
             )}
           </div>
 
-          {/* 3. Open Source */}
+          {/* 3. Source-Available & Non-Commercial */}
           <div className="p-3.5 rounded-xl bg-[#0B0F19] border border-purple-500/30 space-y-2 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-purple-400 font-bold text-xs">
                 <Code2 className="w-4 h-4 shrink-0" />
-                <span>Free & Open Source</span>
+                <span>Free for Students & Source-Available</span>
               </div>
               <a
                 href="https://github.com/Shash-J/TrackMyCompany.git"
@@ -176,7 +176,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
               </a>
             </div>
             <p className="text-slate-300 text-[11px] leading-relaxed">
-              Built openly for students everywhere. You are free to inspect the source code, fork the repository, or contribute improvements.
+              Licensed under PolyForm Noncommercial 1.0.0. Free for students, educational institutions, and personal study. Commercial use requires a separate paid license.
             </p>
           </div>
 
