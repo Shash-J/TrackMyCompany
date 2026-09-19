@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  Building2, 
   FileSpreadsheet, 
   UserCheck,
   LayoutDashboard,
@@ -82,9 +81,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             onTouchCancel={cancelPress}
             title="Press and hold for site details & privacy"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-md shadow-indigo-500/25 border border-indigo-400/30 shrink-0">
-              <Building2 className="w-4 h-4 text-white" />
-            </div>
+            <img 
+              src="./icons/icon-192.png" 
+              alt="TrackMyCompany Logo" 
+              className="w-8 h-8 rounded-xl shadow-md shadow-indigo-500/25 border border-indigo-400/30 shrink-0 object-contain" 
+            />
             <div>
               <span className="text-base font-bold tracking-tight text-white block leading-none">
                 TrackMyCompany

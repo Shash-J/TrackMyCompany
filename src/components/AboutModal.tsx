@@ -8,7 +8,6 @@ import {
   Check, 
   Copy, 
   ExternalLink, 
-  Building2, 
   Heart,
   Smartphone,
   RefreshCw
@@ -73,9 +72,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-[#0B0F19]/90">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-md shadow-indigo-500/25 border border-indigo-400/30 shrink-0">
-              <Building2 className="w-4 h-4 text-white" />
-            </div>
+            <img 
+              src="./icons/icon-192.png" 
+              alt="TrackMyCompany Logo" 
+              className="w-9 h-9 rounded-xl shadow-md shadow-indigo-500/25 border border-indigo-400/30 shrink-0 object-contain" 
+            />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base font-bold text-white tracking-tight leading-tight">
