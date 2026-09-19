@@ -246,7 +246,7 @@ export const InstallPromptModal: React.FC<InstallPromptModalProps> = ({
                 <div className="flex items-start gap-2">
                   <Code2 className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
-                    <strong className="text-cyan-300">Source-Available & Private:</strong> 100% private, no cloud storage, no login, and free for students. Your personal placement data never leaves your device.
+                    <strong className="text-cyan-300">Source-Available & Private:</strong> TrackMyCompany is a source-available placement tracker, free for students, education, research, personal use, and other non-commercial purposes. 100% private, no cloud storage, and no login required.
                   </p>
                 </div>
 

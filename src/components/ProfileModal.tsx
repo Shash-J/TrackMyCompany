@@ -187,7 +187,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
 
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              100% Client-Side Privacy: All data is saved exclusively in your browser's local storage. Free for students & source-available for non-commercial use.
+              100% Client-Side Privacy: All data is saved exclusively in your browser's local storage. TrackMyCompany is a source-available placement tracker, free for students, education, research, personal use, and other non-commercial purposes.
             </p>
           </div>
         </form>

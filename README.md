@@ -1,6 +1,6 @@
 # TrackMyCompany 🎓💼
 
-> **The modern, privacy-first campus placement tracker for college students.**  
+> **TrackMyCompany is a source-available placement tracker, free for students, education, research, personal use, and other non-commercial purposes.**  
 > Effortlessly track visiting companies, Google Form applications, CTC packages, Online Assessment (OA) drive dates, and decision analytics. Exclusively tailored for RVCE students to eliminate messy spreadsheets and WhatsApp group confusion.
 
 [![Official Website](https://img.shields.io/badge/Official%20Website-trackmycompany.online-863bff?style=for-the-badge&logo=google-chrome)](https://trackmycompany.online)
@@ -8,6 +8,7 @@
 [![PWA](https://img.shields.io/badge/PWA-Installable%20%26%20100%25%20Offline-green.svg?style=for-the-badge)](https://web.dev/progressive-web-apps/)
 [![Privacy: 100% Local](https://img.shields.io/badge/Privacy-100%25%20Client--Side-blue.svg?style=for-the-badge)](#-100-privacy--data-safety-guarantee)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm_Noncommercial_1.0.0-blue.svg?style=for-the-badge)](LICENSE)
+[![Source-Available](https://img.shields.io/badge/Source--Available-Free%20for%20Non--Commercial-purple.svg?style=for-the-badge)](LICENSE)
 
 ---
 

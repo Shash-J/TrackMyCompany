@@ -176,7 +176,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
               </a>
             </div>
             <p className="text-slate-300 text-[11px] leading-relaxed">
-              Licensed under PolyForm Noncommercial 1.0.0. Free for students, educational institutions, and personal study. Commercial use requires a separate paid license.
+              TrackMyCompany is a source-available placement tracker, free for students, education, research, personal use, and other non-commercial purposes. Commercial use requires a separate commercial license.
             </p>
           </div>
 
