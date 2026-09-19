@@ -10,9 +10,11 @@ import {
   ExternalLink, 
   Building2, 
   Heart,
-  Smartphone
+  Smartphone,
+  RefreshCw
 } from 'lucide-react';
 import { GithubIcon } from './GithubIcon';
+import { APP_VERSION } from '../version';
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -28,6 +30,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
   isStandalone = false
 }) => {
   const [copied, setCopied] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'latest'>('idle');
   const contactEmail = 'shasedujois@gmail.com';
 
   if (!isOpen) return null;
@@ -36,6 +39,28 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     navigator.clipboard.writeText(contactEmail);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCheckUpdate = async () => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+      setUpdateStatus('latest');
+      setTimeout(() => setUpdateStatus('idle'), 3000);
+      return;
+    }
+    setUpdateStatus('checking');
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.update();
+      }
+      setTimeout(() => {
+        setUpdateStatus('latest');
+        setTimeout(() => setUpdateStatus('idle'), 3000);
+      }, 800);
+    } catch {
+      setUpdateStatus('latest');
+      setTimeout(() => setUpdateStatus('idle'), 3000);
+    }
   };
 
   return (
@@ -52,13 +77,29 @@ export const AboutModal: React.FC<AboutModalProps> = ({
               <Building2 className="w-4 h-4 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base font-bold text-white tracking-tight leading-tight">
                   TrackMyCompany
                 </h2>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
-                  v1.0.0
+                  v{APP_VERSION}
                 </span>
+                <button
+                  type="button"
+                  onClick={handleCheckUpdate}
+                  disabled={updateStatus === 'checking'}
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 hover:text-indigo-300 px-1.5 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 transition-colors cursor-pointer active:scale-95 disabled:opacity-60"
+                  title="Check for application updates"
+                >
+                  <RefreshCw className={`w-2.5 h-2.5 ${updateStatus === 'checking' ? 'animate-spin text-indigo-400' : updateStatus === 'latest' ? 'text-emerald-400' : ''}`} />
+                  <span>
+                    {updateStatus === 'checking' 
+                      ? 'Checking...' 
+                      : updateStatus === 'latest' 
+                        ? 'Latest ✓' 
+                        : 'Check update'}
+                  </span>
+                </button>
               </div>
               <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
                 Campus Placement & Company Tracker
@@ -139,14 +180,14 @@ export const AboutModal: React.FC<AboutModalProps> = ({
             </p>
           </div>
 
-          {/* 4. Contact Makers */}
+          {/* 4. Contact Maintainer */}
           <div className="p-3.5 rounded-xl bg-[#0B0F19] border border-amber-500/30 space-y-2.5 shadow-sm">
             <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
               <Mail className="w-4 h-4 shrink-0" />
-              <span>Contact Makers</span>
+              <span>Contact Maintainer</span>
             </div>
             <p className="text-slate-300 text-[11px] leading-relaxed">
-              Have suggestions, feedback, or need help? Reach out directly to the maker:
+              Maintained by 2027 batch CSE student @ RVCE. Have suggestions, feedback, or need help? Reach out directly:
             </p>
             
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">

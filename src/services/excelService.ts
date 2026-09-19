@@ -71,7 +71,7 @@ export const exportCompaniesToExcel = (
     const profileRows = [
       { Property: 'Student Name', Value: profile.name || 'Student' },
       { Property: 'Branch / Department', Value: profile.branch || '' },
-      { Property: 'Batch / Graduation Year', Value: profile.batch || '2026' },
+      { Property: 'Batch / Graduation Year', Value: profile.batch || '2027' },
       { Property: 'College / Institute', Value: profile.college || '' },
       { Property: 'Exported At', Value: new Date().toISOString() },
       { Property: 'Source Application', Value: 'TrackMyCompany (Open Source)' },
@@ -430,7 +430,7 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
 
           let pName = '';
           let pBranch = '';
-          let pBatch = '2026';
+          let pBatch = '2027';
           let pCollege = '';
 
           pJsonData.forEach((row) => {
@@ -452,7 +452,7 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
             importedProfile = {
               name: pName,
               branch: pBranch || undefined,
-              batch: pBatch || '2026',
+              batch: pBatch || '2027',
               college: pCollege || undefined,
             };
           }

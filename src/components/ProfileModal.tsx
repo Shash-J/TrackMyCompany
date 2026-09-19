@@ -22,14 +22,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [branch, setBranch] = useState('');
-  const [batch, setBatch] = useState('2026');
+  const [batch, setBatch] = useState('2027');
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (currentProfile) {
       setName(currentProfile.name || '');
       setBranch(currentProfile.branch || '');
-      setBatch(currentProfile.batch || '2026');
+      setBatch(currentProfile.batch || '2027');
     }
   }, [currentProfile, isOpen]);
 
@@ -45,7 +45,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     onSave({
       name: name.trim(),
       branch: branch.trim() || undefined,
-      batch: batch.trim() || '2026',
+      batch: batch.trim() || '2027',
     });
     onClose();
   };
