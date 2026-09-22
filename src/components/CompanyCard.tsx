@@ -30,6 +30,7 @@ interface CompanyCardProps {
     oaRejectionReasonTags?: OARejectionReasonTag[],
     oaCustomReasonNote?: string
   ) => void;
+  onUpdateOACleared?: (id: string, cleared?: boolean) => void;
   onToggleOACleared?: (id: string) => void;
   // Drag and drop reordering props
   draggable?: boolean;
@@ -48,6 +49,7 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
   onDelete,
   onQuickStatusChange,
   onUpdateOAStatus,
+  onUpdateOACleared,
   onToggleOACleared,
   draggable = false,
   onDragStart,
@@ -132,6 +134,9 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
   const handleUndoNotShortlisted = (e: React.MouseEvent) => {
     e.stopPropagation();
     onUpdateOAStatus(company.id, 'shortlisted', undefined, undefined);
+    if (onUpdateOACleared) {
+      onUpdateOACleared(company.id, undefined);
+    }
     setIsMarkingNotShortlisted(false);
   };
 
@@ -176,6 +181,14 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
             <span 
               className="w-2 h-2 rounded-full bg-rose-500 shrink-0 shadow-xs shadow-rose-500/60"
               title={`Not shortlisted for OA${oaRejectionTags.length ? `: ${oaRejectionTags.join(', ')}` : ''}`}
+            />
+          )}
+
+          {/* Minimal small yellow dot indicating not cleared OA */}
+          {isApplied && !isNotShortlistedForOA && company.oaCleared === false && (
+            <span 
+              className="w-2 h-2 rounded-full bg-amber-400 shrink-0 shadow-xs shadow-amber-400/60"
+              title="Not cleared OA"
             />
           )}
         </div>
@@ -463,6 +476,60 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
                     </div>
                   )}
                 </div>
+              ) : company.oaCleared === false ? (
+                /* State 2: Yellow Zone (Wrote OA, but Not Cleared) */
+                <div className="p-3.5 rounded-xl bg-amber-950/25 border border-amber-500/30 space-y-2.5 animate-fadeIn">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                        <XCircle className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-amber-300">
+                            OA Not Cleared ✕
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-amber-400/80 block truncate">
+                          Wrote OA, but not cleared
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 self-end sm:self-center">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onUpdateOACleared) {
+                            onUpdateOACleared(company.id, undefined);
+                          } else if (onToggleOACleared) {
+                            onToggleOACleared(company.id);
+                          }
+                        }}
+                        className="text-[10px] font-semibold text-emerald-300 hover:text-emerald-200 px-2.5 py-1 rounded-lg bg-emerald-950/60 border border-emerald-700/50 hover:bg-emerald-900/60 transition-colors shrink-0 cursor-pointer"
+                        title="Mark back as Writing OA"
+                      >
+                        Undo (Writing OA)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onUpdateOACleared) {
+                            onUpdateOACleared(company.id, true);
+                          } else if (onToggleOACleared) {
+                            onToggleOACleared(company.id);
+                          }
+                        }}
+                        className="text-[10px] font-semibold text-amber-300 hover:text-amber-200 px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-500/50 hover:bg-amber-900/60 transition-colors shrink-0 cursor-pointer"
+                        title="Good news! Mark as Cleared OA"
+                      >
+                        Cleared OA ✓
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ) : isMarkingNotShortlisted ? (
                 /* Inline Reason Tag Selector Form (when transitioning from Writing OA to Not Shortlisted) */
                 <div className="p-3.5 rounded-xl bg-rose-950/20 border border-rose-800/40 space-y-2.5 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
@@ -495,7 +562,7 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
                             className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                               isSelected
                                 ? 'bg-rose-500/30 border-rose-500/70 text-rose-200 font-bold shadow-sm shadow-rose-500/20'
-                              : 'bg-[#0B0F19] border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                                : 'bg-[#0B0F19] border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
                             }`}
                           >
                             <span className="text-[10px] font-bold">{isSelected ? '✓' : '+'}</span>
@@ -533,8 +600,58 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
                     </button>
                   </div>
                 </div>
+              ) : company.oaCleared === true ? (
+                /* State 3: Cleared OA (Active Group) */
+                <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 animate-fadeIn">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0">
+                      <Award className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-xs font-bold text-emerald-300 whitespace-nowrap">
+                        Cleared OA ✓
+                      </span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 whitespace-nowrap">
+                        Cleared
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 self-end sm:self-center">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onUpdateOACleared) {
+                          onUpdateOACleared(company.id, false);
+                        } else if (onToggleOACleared) {
+                          onToggleOACleared(company.id);
+                        }
+                      }}
+                      className="text-[10px] font-semibold text-amber-300 hover:text-amber-200 px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-500/50 hover:bg-amber-900/60 transition-colors shrink-0 cursor-pointer"
+                      title="Move to Yellow Zone (Not cleared OA)"
+                    >
+                      Not cleared OA
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onUpdateOACleared) {
+                          onUpdateOACleared(company.id, undefined);
+                        } else if (onToggleOACleared) {
+                          onToggleOACleared(company.id);
+                        }
+                      }}
+                      className="text-[10px] font-semibold text-slate-400 hover:text-white px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 transition-colors shrink-0 cursor-pointer"
+                      title="Undo back to Writing OA scheduled"
+                    >
+                      Undo
+                    </button>
+                  </div>
+                </div>
               ) : (
-                /* Default State: Writing OA (Scheduled) + Cleared OA Card Button side-by-side */
+                /* Default State: Writing OA (Scheduled) + side-by-side outcome buttons */
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-stretch">
                   {/* Left: Green Writing OA Card */}
                   <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
@@ -566,38 +683,42 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
                     </button>
                   </div>
 
-                  {/* Right: Yellow / Green Cleared OA Card Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onToggleOACleared) {
-                        onToggleOACleared(company.id);
-                      }
-                    }}
-                    className={`p-3 sm:px-4 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0 ${
-                      company.oaCleared
-                        ? 'bg-emerald-950/50 hover:bg-emerald-900/60 border-emerald-500/60 text-emerald-300 shadow-sm shadow-emerald-500/20'
-                        : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm shadow-amber-500/10'
-                    }`}
-                    title={company.oaCleared ? 'Click to mark as OA not cleared (undo)' : 'Good news! Click if you cleared this OA!'}
-                  >
-                    {company.oaCleared ? (
-                      <>
-                        <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        </div>
-                        <span className="whitespace-nowrap">OA Not cleared</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-                          <Award className="w-3.5 h-3.5 text-amber-400" />
-                        </div>
-                        <span className="whitespace-nowrap">Cleared OA</span>
-                      </>
-                    )}
-                  </button>
+                  {/* Right: Side-by-side Outcome Buttons */}
+                  <div className="flex sm:flex-col gap-1.5 shrink-0 justify-center">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onUpdateOACleared) {
+                          onUpdateOACleared(company.id, true);
+                        } else if (onToggleOACleared) {
+                          onToggleOACleared(company.id);
+                        }
+                      }}
+                      className="flex-1 sm:flex-initial p-2 sm:px-3 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-sm shadow-amber-500/10"
+                      title="Good news! Click if you cleared this OA!"
+                    >
+                      <Award className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="whitespace-nowrap">Cleared OA</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onUpdateOACleared) {
+                          onUpdateOACleared(company.id, false);
+                        } else if (onToggleOACleared) {
+                          onToggleOACleared(company.id);
+                        }
+                      }}
+                      className="flex-1 sm:flex-initial p-2 sm:px-3 rounded-xl border border-slate-700 bg-slate-900/90 hover:bg-amber-950/50 hover:border-amber-500/40 text-slate-300 hover:text-amber-300 font-medium text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                      title="Mark as not cleared OA (moves to Yellow Zone)"
+                    >
+                      <XCircle className="w-3.5 h-3.5 text-amber-400/80" />
+                      <span className="whitespace-nowrap">Not cleared OA</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

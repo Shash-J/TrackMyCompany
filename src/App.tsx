@@ -90,12 +90,13 @@ const getLocalDateString = (d: Date = new Date()): string => {
   return `${year}-${month}-${day}`;
 };
 
-type CompanyListGroup = 'applied_shortlisted' | 'applied_not_shortlisted' | 'skipped';
+type CompanyListGroup = 'applied_active' | 'applied_not_cleared_oa' | 'applied_not_shortlisted' | 'skipped';
 
 const getCompanyGroup = (company: Company): CompanyListGroup => {
   if (company.status === 'not_applied') return 'skipped';
   if (company.oaStatus === 'not_shortlisted') return 'applied_not_shortlisted';
-  return 'applied_shortlisted';
+  if (company.oaCleared === false) return 'applied_not_cleared_oa';
+  return 'applied_active';
 };
 import { 
   getCompanies, 
@@ -443,7 +444,7 @@ export const App: React.FC = () => {
     await updateCompany({
       ...target,
       oaStatus,
-      oaCleared: oaStatus === 'not_shortlisted' ? false : target.oaCleared,
+      oaCleared: oaStatus === 'not_shortlisted' ? undefined : target.oaCleared,
       oaRejectionReasonTags: oaStatus === 'not_shortlisted' ? oaRejectionReasonTags : undefined,
       oaCustomReasonNote: oaStatus === 'not_shortlisted' ? oaCustomReasonNote : undefined,
     });
@@ -462,21 +463,19 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleToggleOACleared = async (id: string) => {
+  const handleUpdateOACleared = async (id: string, cleared?: boolean) => {
     const target = companies.find((c) => c.id === id);
     if (!target) return;
 
-    const nextCleared = !target.oaCleared;
-
     await updateCompany({
       ...target,
-      oaCleared: nextCleared,
+      oaCleared: cleared,
     });
     const fresh = await getCompanies();
     setCompanies(fresh);
 
     // Celebrate clearing OA with confetti!
-    if (nextCleared) {
+    if (cleared === true) {
       try {
         confetti({
           particleCount: 80,
@@ -485,6 +484,14 @@ export const App: React.FC = () => {
         });
       } catch (_) {}
     }
+  };
+
+  const handleToggleOACleared = async (id: string) => {
+    const target = companies.find((c) => c.id === id);
+    if (!target) return;
+
+    const nextCleared = target.oaCleared === true ? false : true;
+    await handleUpdateOACleared(id, nextCleared);
   };
 
   // Drag and drop reordering state & handlers: restricted strictly to inside the same group
@@ -514,26 +521,30 @@ export const App: React.FC = () => {
     newGroupItems.splice(targetIdx, 0, movedItem);
 
     // Reconstruct master list maintaining group boundaries
-    const shortlisted = companies.filter((c) => getCompanyGroup(c) === 'applied_shortlisted');
+    const active = companies.filter((c) => getCompanyGroup(c) === 'applied_active');
+    const notClearedOA = companies.filter((c) => getCompanyGroup(c) === 'applied_not_cleared_oa');
     const notShortlisted = companies.filter((c) => getCompanyGroup(c) === 'applied_not_shortlisted');
     const skipped = companies.filter((c) => getCompanyGroup(c) === 'skipped');
     const others = companies.filter(
-      (c) => !['applied_shortlisted', 'applied_not_shortlisted', 'skipped'].includes(getCompanyGroup(c))
+      (c) => !['applied_active', 'applied_not_cleared_oa', 'applied_not_shortlisted', 'skipped'].includes(getCompanyGroup(c))
     );
 
-    let newShortlisted = shortlisted;
+    let newActive = active;
+    let newNotClearedOA = notClearedOA;
     let newNotShortlisted = notShortlisted;
     let newSkipped = skipped;
 
-    if (sourceGroup === 'applied_shortlisted') {
-      newShortlisted = newGroupItems;
+    if (sourceGroup === 'applied_active') {
+      newActive = newGroupItems;
+    } else if (sourceGroup === 'applied_not_cleared_oa') {
+      newNotClearedOA = newGroupItems;
     } else if (sourceGroup === 'applied_not_shortlisted') {
       newNotShortlisted = newGroupItems;
     } else if (sourceGroup === 'skipped') {
       newSkipped = newGroupItems;
     }
 
-    const newMaster = [...newShortlisted, ...newNotShortlisted, ...newSkipped, ...others];
+    const newMaster = [...newActive, ...newNotClearedOA, ...newNotShortlisted, ...newSkipped, ...others];
 
     setCompanies(newMaster);
     await saveCompanies(newMaster);
@@ -733,12 +744,20 @@ export const App: React.FC = () => {
       });
   }, [companies, statusFilter, searchQuery]);
 
-  // Derived groups for the Applied tab: Shortlisted vs Not Shortlisted
-  const appliedShortlisted = useMemo(() => {
+  // Derived groups for the Applied tab:
+  // 1. Active: Writing OA (scheduled) or Cleared OA
+  const appliedActive = useMemo(() => {
     if (statusFilter !== 'applied') return [];
-    return filteredCompanies.filter((c) => c.oaStatus !== 'not_shortlisted');
+    return filteredCompanies.filter((c) => c.oaStatus !== 'not_shortlisted' && c.oaCleared !== false);
   }, [filteredCompanies, statusFilter]);
 
+  // 2. Yellow Zone: Shortlisted to write OA, but Not Cleared OA
+  const appliedNotClearedOA = useMemo(() => {
+    if (statusFilter !== 'applied') return [];
+    return filteredCompanies.filter((c) => c.oaStatus !== 'not_shortlisted' && c.oaCleared === false);
+  }, [filteredCompanies, statusFilter]);
+
+  // 3. Red Zone: Applied, but Not Shortlisted for OA
   const appliedNotShortlisted = useMemo(() => {
     if (statusFilter !== 'applied') return [];
     return filteredCompanies.filter((c) => c.oaStatus === 'not_shortlisted');
@@ -929,10 +948,10 @@ export const App: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Active / Shortlisted group */}
-                    {appliedShortlisted.length > 0 ? (
+                    {/* Active Group (Writing OA / Cleared OA) */}
+                    {appliedActive.length > 0 ? (
                       <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-                        {appliedShortlisted.map((company) => (
+                        {appliedActive.map((company) => (
                           <CompanyCard
                             key={company.id}
                             company={company}
@@ -940,6 +959,7 @@ export const App: React.FC = () => {
                             onDelete={handleDeleteCompany}
                             onQuickStatusChange={handleQuickStatusChange}
                             onUpdateOAStatus={handleUpdateOAStatus}
+                            onUpdateOACleared={handleUpdateOACleared}
                             onToggleOACleared={handleToggleOACleared}
                             draggable={!searchQuery.trim()}
                             onDragStart={handleDragStart}
@@ -953,21 +973,54 @@ export const App: React.FC = () => {
                         ))}
                       </div>
                     ) : (
-                      searchQuery.trim() && (
+                      searchQuery.trim() && appliedNotClearedOA.length === 0 && appliedNotShortlisted.length === 0 && (
                         <div className="p-4 rounded-xl bg-[#131B2E]/60 border border-slate-800 text-center text-xs text-slate-400">
                           No active companies match your search.
                         </div>
                       )
                     )}
 
-                    {/* Line separation between the two groups */}
-                    {appliedShortlisted.length > 0 && appliedNotShortlisted.length > 0 && (
+                    {/* Divider line 1: Between Active and Yellow Zone (or Red Zone if no Yellow Zone) */}
+                    {appliedActive.length > 0 && (appliedNotClearedOA.length > 0 || appliedNotShortlisted.length > 0) && (
                       <div className="py-2">
                         <div className="h-px bg-slate-800/80 w-full" />
                       </div>
                     )}
 
-                    {/* Not Shortlisted group (kept below, each card has a small red dot) */}
+                    {/* Yellow Zone: Not Cleared OA group (separated by line, each card has a small yellow dot) */}
+                    {appliedNotClearedOA.length > 0 && (
+                      <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+                        {appliedNotClearedOA.map((company) => (
+                          <CompanyCard
+                            key={company.id}
+                            company={company}
+                            onEdit={openEditCompanyModal}
+                            onDelete={handleDeleteCompany}
+                            onQuickStatusChange={handleQuickStatusChange}
+                            onUpdateOAStatus={handleUpdateOAStatus}
+                            onUpdateOACleared={handleUpdateOACleared}
+                            onToggleOACleared={handleToggleOACleared}
+                            draggable={!searchQuery.trim()}
+                            onDragStart={handleDragStart}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            onDragEnd={handleDragEnd}
+                            isDragging={draggedCompanyId === company.id}
+                            isDragOver={dragOverCompanyId === company.id}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Divider line 2: Between Yellow Zone and Red Zone */}
+                    {appliedNotClearedOA.length > 0 && appliedNotShortlisted.length > 0 && (
+                      <div className="py-2">
+                        <div className="h-px bg-slate-800/80 w-full" />
+                      </div>
+                    )}
+
+                    {/* Red Zone: Not Shortlisted for OA group (separated by line, each card has a small red dot) */}
                     {appliedNotShortlisted.length > 0 && (
                       <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
                         {appliedNotShortlisted.map((company) => (
@@ -978,6 +1031,7 @@ export const App: React.FC = () => {
                             onDelete={handleDeleteCompany}
                             onQuickStatusChange={handleQuickStatusChange}
                             onUpdateOAStatus={handleUpdateOAStatus}
+                            onUpdateOACleared={handleUpdateOACleared}
                             onToggleOACleared={handleToggleOACleared}
                             draggable={!searchQuery.trim()}
                             onDragStart={handleDragStart}
@@ -1014,6 +1068,7 @@ export const App: React.FC = () => {
                           onDelete={handleDeleteCompany}
                           onQuickStatusChange={handleQuickStatusChange}
                           onUpdateOAStatus={handleUpdateOAStatus}
+                          onUpdateOACleared={handleUpdateOACleared}
                           onToggleOACleared={handleToggleOACleared}
                           draggable={!searchQuery.trim()}
                           onDragStart={handleDragStart}

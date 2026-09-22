@@ -1,5 +1,5 @@
 // TrackMyCompany PWA Service Worker
-const CACHE_NAME = 'trackmycompany-v1.4.0';
+const CACHE_NAME = 'trackmycompany-v1.4.1';
 
 const PRECACHE_ASSETS = [
   './',

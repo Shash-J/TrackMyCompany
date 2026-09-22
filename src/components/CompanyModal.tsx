@@ -14,8 +14,7 @@ import {
   Edit3, 
   ArrowLeft,
   ChevronDown,
-  ChevronUp,
-  Award
+  ChevronUp
 } from 'lucide-react';
 import type { 
   Company, 
@@ -65,7 +64,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
 
   // Applied fields (OA status)
   const [oaStatusState, setOaStatusState] = useState<OAShortlistStatus>('shortlisted');
-  const [oaClearedState, setOaClearedState] = useState(false);
+  const [oaClearedState, setOaClearedState] = useState<boolean | undefined>(undefined);
   const [oaRejectionReasonTags, setOaRejectionReasonTags] = useState<OARejectionReasonTag[]>(['CGPA']);
   const [oaCustomReasonNote, setOaCustomReasonNote] = useState('');
 
@@ -87,7 +86,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setStatus(editCompany.status === 'not_applied' ? 'not_applied' : 'applied');
       setOaDate(editCompany.oaDate || '');
       setOaStatusState(editCompany.oaStatus === 'not_shortlisted' ? 'not_shortlisted' : 'shortlisted');
-      setOaClearedState(editCompany.oaCleared === true);
+      setOaClearedState(editCompany.oaCleared);
 
       setOaRejectionReasonTags(
         editCompany.oaRejectionReasonTags?.length ? editCompany.oaRejectionReasonTags : ['CGPA']
@@ -801,34 +800,48 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                     </button>
                   </div>
 
-                  {/* OA Cleared toggle when writing OA */}
+                  {/* OA Result selector when writing OA */}
                   {oaStatusState !== 'not_shortlisted' && (
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#0B0F19] border border-slate-800">
-                      <div>
+                    <div className="p-2.5 rounded-xl bg-[#0B0F19] border border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-slate-300 block leading-tight">OA Result:</span>
-                        <span className="text-[10px] text-slate-400">Did you clear this assessment?</span>
+                        <span className="text-[10px] text-slate-400">Current assessment stage</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setOaClearedState(!oaClearedState)}
-                        className={`py-1.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                          oaClearedState
-                            ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-xs'
-                            : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
-                        }`}
-                      >
-                        {oaClearedState ? (
-                          <>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>Cleared OA ✓</span>
-                          </>
-                        ) : (
-                          <>
-                            <Award className="w-3.5 h-3.5 text-amber-400" />
-                            <span>Cleared OA</span>
-                          </>
-                        )}
-                      </button>
+                      <div className="grid grid-cols-3 gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setOaClearedState(undefined)}
+                          className={`py-1.5 px-2 rounded-lg text-center font-semibold transition-all cursor-pointer ${
+                            oaClearedState === undefined
+                              ? 'bg-slate-700 text-white shadow-xs'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Writing OA
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOaClearedState(true)}
+                          className={`py-1.5 px-2 rounded-lg text-center font-semibold transition-all cursor-pointer ${
+                            oaClearedState === true
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'text-slate-400 hover:text-emerald-300'
+                          }`}
+                        >
+                          Cleared ✓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOaClearedState(false)}
+                          className={`py-1.5 px-2 rounded-lg text-center font-semibold transition-all cursor-pointer ${
+                            oaClearedState === false
+                              ? 'bg-amber-600 text-white shadow-xs'
+                              : 'text-slate-400 hover:text-amber-300'
+                          }`}
+                        >
+                          Not Cleared
+                        </button>
+                      </div>
                     </div>
                   )}
 

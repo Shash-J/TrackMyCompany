@@ -123,21 +123,21 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
   // 3. OA Stats Data (Cleared vs Shortlist vs Reasons)
   const [oaViewMode, setOaViewMode] = useState<'cleared' | 'shortlist' | 'reasons'>('cleared');
 
-  const oaWrittenCount = stats.oaShortlistedCount;
   const oaClearedCount = companies.filter((c) => c.status === 'applied' && c.oaStatus !== 'not_shortlisted' && c.oaCleared === true).length;
-  const oaNotClearedCount = Math.max(0, oaWrittenCount - oaClearedCount);
+  const oaNotClearedCount = companies.filter((c) => c.status === 'applied' && c.oaStatus !== 'not_shortlisted' && c.oaCleared === false).length;
+  const oaDecidedCount = oaClearedCount + oaNotClearedCount;
 
   const oaClearedItems: PieChartItem[] = [
-    {
+    ...(oaClearedCount > 0 ? [{
       label: 'Cleared OA',
       value: oaClearedCount,
       color: '#10B981', // Emerald
-    },
-    {
+    }] : []),
+    ...(oaNotClearedCount > 0 ? [{
       label: 'Not Cleared',
       value: oaNotClearedCount,
       color: '#F59E0B', // Amber / Yellow
-    },
+    }] : []),
   ];
 
   const oaStatusItems: PieChartItem[] = [
@@ -237,21 +237,21 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
           }
           centerLabel={
             oaViewMode === 'cleared'
-              ? `${oaWrittenCount}`
+              ? `${oaDecidedCount}`
               : oaViewMode === 'shortlist'
                 ? `${stats.totalApplied}`
                 : `${stats.oaNotShortlistedCount}`
           }
           centerSublabel={
             oaViewMode === 'cleared'
-              ? 'Written'
+              ? 'Attempted'
               : oaViewMode === 'shortlist'
                 ? 'Applied'
                 : 'Filtered'
           }
           emptyMessage={
             oaViewMode === 'cleared'
-              ? 'No OAs written yet'
+              ? 'No OA outcomes marked yet'
               : oaViewMode === 'shortlist'
                 ? 'No applied companies yet'
                 : 'No companies filtered yet'
