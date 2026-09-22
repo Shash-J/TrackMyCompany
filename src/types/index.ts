@@ -52,6 +52,7 @@ export interface Company {
   // Fields when status === 'applied'
   oaDate?: string;
   oaStatus?: OAShortlistStatus;
+  oaCleared?: boolean; // True when student cleared the online assessment (good news!)
   oaRejectionReasonTags?: OARejectionReasonTag[];
   oaCustomReasonNote?: string;
 
@@ -83,6 +84,9 @@ export interface StatisticsData {
   oaNotShortlistedCount: number;
   oaPendingCount: number;
   oaShortlistConversionRate: number; // Shortlisted / Applied %
+  oaClearedCount: number; // Cleared OA count
+  oaNotClearedCount: number; // Written OA but not cleared count
+  oaClearRate: number; // Cleared / Written %
 
   // Tier stats
   openDreamCount: number;

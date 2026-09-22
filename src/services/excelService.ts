@@ -24,6 +24,7 @@ export const exportCompaniesToExcel = (
     'Application Status': c.status === 'applied' ? 'Applied' : c.status === 'not_applied' ? 'Not Applied' : 'Undecided',
     'OA Drive Date': c.oaDate ? c.oaDate : '',
     'OA Shortlist Status': c.oaStatus === 'not_shortlisted' ? 'Not Shortlisted' : (c.status === 'applied' ? 'Writing OA' : ''),
+    'OA Cleared': c.oaCleared ? 'Cleared' : (c.status === 'applied' && c.oaStatus !== 'not_shortlisted' ? 'Not Cleared' : ''),
     'OA Rejection Reason': c.oaRejectionReasonTags?.join(', ') || '',
     'OA Rejection Note': c.oaCustomReasonNote || '',
     'Rejection Reason Tag': c.rejectionReasonTags?.join(', ') || '',
@@ -362,6 +363,9 @@ const COLUMN_SYNONYMS = {
   oaStatus: [
     'oastatus', 'oashortliststatus', 'shortliststatus', 'shortlisted', 
     'teststatus', 'assessmentstatus', 'oaresult'
+  ],
+  oaCleared: [
+    'oacleared', 'clearedoa', 'oaclear', 'oapass', 'cleared', 'iscleared'
   ],
   rejectionReason: [
     'rejectionreason', 'rejectionreasontag', 'skipreason', 'reason', 
@@ -809,6 +813,19 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
             }
           }
 
+          // OA Cleared
+          let oaCleared: boolean | undefined = undefined;
+          if (status === 'applied' && oaStatus !== 'not_shortlisted') {
+            if (colMap.oaCleared !== undefined && row[colMap.oaCleared] !== undefined) {
+              const rawCleared = String(row[colMap.oaCleared]).toLowerCase().trim();
+              if (rawCleared === 'cleared' || rawCleared === 'yes' || rawCleared === 'true' || rawCleared === '1' || rawCleared === 'pass') {
+                oaCleared = true;
+              } else if (rawCleared === 'not cleared' || rawCleared === 'no' || rawCleared === 'false' || rawCleared === '0' || rawCleared === 'fail') {
+                oaCleared = false;
+              }
+            }
+          }
+
           // OA Drive Date
           let oaDate: string | undefined = undefined;
           if (colMap.oaDate !== undefined && row[colMap.oaDate] !== undefined) {
@@ -847,6 +864,7 @@ export const parseExcelOrCSVFile = async (file: File): Promise<ImportResult> => 
             customReasonNote,
             oaDate,
             oaStatus,
+            oaCleared,
             oaRejectionReasonTags,
             oaCustomReasonNote,
             formLink,

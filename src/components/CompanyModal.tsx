@@ -14,7 +14,8 @@ import {
   Edit3, 
   ArrowLeft,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Award
 } from 'lucide-react';
 import type { 
   Company, 
@@ -64,6 +65,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
 
   // Applied fields (OA status)
   const [oaStatusState, setOaStatusState] = useState<OAShortlistStatus>('shortlisted');
+  const [oaClearedState, setOaClearedState] = useState(false);
   const [oaRejectionReasonTags, setOaRejectionReasonTags] = useState<OARejectionReasonTag[]>(['CGPA']);
   const [oaCustomReasonNote, setOaCustomReasonNote] = useState('');
 
@@ -85,6 +87,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setStatus(editCompany.status === 'not_applied' ? 'not_applied' : 'applied');
       setOaDate(editCompany.oaDate || '');
       setOaStatusState(editCompany.oaStatus === 'not_shortlisted' ? 'not_shortlisted' : 'shortlisted');
+      setOaClearedState(editCompany.oaCleared === true);
 
       setOaRejectionReasonTags(
         editCompany.oaRejectionReasonTags?.length ? editCompany.oaRejectionReasonTags : ['CGPA']
@@ -222,6 +225,9 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
         // Applied fields
         oaStatus: currentStatus === 'applied' 
           ? (editCompany ? oaStatusState : 'shortlisted') 
+          : undefined,
+        oaCleared: currentStatus === 'applied' && oaStatusState !== 'not_shortlisted'
+          ? oaClearedState
           : undefined,
         oaRejectionReasonTags: currentStatus === 'applied' && oaStatusState === 'not_shortlisted'
           ? oaRejectionReasonTags
@@ -794,6 +800,37 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
                       <span>Not Shortlisted</span>
                     </button>
                   </div>
+
+                  {/* OA Cleared toggle when writing OA */}
+                  {oaStatusState !== 'not_shortlisted' && (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#0B0F19] border border-slate-800">
+                      <div>
+                        <span className="text-xs font-semibold text-slate-300 block leading-tight">OA Result:</span>
+                        <span className="text-[10px] text-slate-400">Did you clear this assessment?</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setOaClearedState(!oaClearedState)}
+                        className={`py-1.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                          oaClearedState
+                            ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-xs'
+                            : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
+                        }`}
+                      >
+                        {oaClearedState ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Cleared OA ✓</span>
+                          </>
+                        ) : (
+                          <>
+                            <Award className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Cleared OA</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
 
                   {oaStatusState === 'not_shortlisted' && (
                     <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-800/50 space-y-2.5 animate-fadeIn">

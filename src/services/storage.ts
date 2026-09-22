@@ -163,6 +163,9 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
   const oaShortlistedCount = Math.max(0, totalApplied - oaNotShortlistedCount);
   const oaPendingCount = 0;
   const oaShortlistConversionRate = totalApplied > 0 ? Math.round((oaShortlistedCount / totalApplied) * 100) : 0;
+  const oaClearedCount = appliedList.filter((c) => c.oaStatus !== 'not_shortlisted' && c.oaCleared === true).length;
+  const oaNotClearedCount = Math.max(0, oaShortlistedCount - oaClearedCount);
+  const oaClearRate = oaShortlistedCount > 0 ? Math.round((oaClearedCount / oaShortlistedCount) * 100) : 0;
 
   // Tier counts
   const openDreamCount = companies.filter((c) => c.tier === 'OPEN_DREAM').length;
@@ -266,6 +269,9 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
     oaNotShortlistedCount,
     oaPendingCount,
     oaShortlistConversionRate,
+    oaClearedCount,
+    oaNotClearedCount,
+    oaClearRate,
     openDreamCount,
     dreamCount,
     massCount,

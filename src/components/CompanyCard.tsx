@@ -8,7 +8,8 @@ import {
   ChevronDown, 
   ChevronUp, 
   Tag, 
-  GripVertical 
+  GripVertical,
+  Award
 } from 'lucide-react';
 import type { Company, OAShortlistStatus, OARejectionReasonTag, RejectionReasonTag } from '../types';
 import { OA_REJECTION_PRESET_TAGS, REJECTION_PRESET_TAGS } from '../services/storage';
@@ -29,6 +30,7 @@ interface CompanyCardProps {
     oaRejectionReasonTags?: OARejectionReasonTag[],
     oaCustomReasonNote?: string
   ) => void;
+  onToggleOACleared?: (id: string) => void;
   // Drag and drop reordering props
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent, id: string) => void;
@@ -46,6 +48,7 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
   onDelete,
   onQuickStatusChange,
   onUpdateOAStatus,
+  onToggleOACleared,
   draggable = false,
   onDragStart,
   onDragOver,
@@ -531,36 +534,69 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
                   </div>
                 </div>
               ) : (
-                /* Default State: Writing OA (Scheduled) */
-                <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-emerald-300">
+                /* Default State: Writing OA (Scheduled) + Cleared OA Card Button side-by-side */
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-stretch">
+                  {/* Left: Green Writing OA Card */}
+                  <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs font-bold text-emerald-300 whitespace-nowrap">
                           Writing OA ✓
                         </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 whitespace-nowrap">
                           Scheduled
                         </span>
                       </div>
-                      <span className="text-[10px] text-emerald-400/80 block truncate">
-                        Scheduled to write the Online Assessment
-                      </span>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsMarkingNotShortlisted(true);
+                      }}
+                      className="w-full sm:w-auto py-1.5 px-3 bg-slate-900/90 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-700/60 font-medium text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                      title="Mark as not shortlisted to write this OA"
+                    >
+                      <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                      <span className="whitespace-nowrap">Not Shortlisted for OA</span>
+                    </button>
                   </div>
 
+                  {/* Right: Yellow / Green Cleared OA Card Button */}
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setIsMarkingNotShortlisted(true);
+                      if (onToggleOACleared) {
+                        onToggleOACleared(company.id);
+                      }
                     }}
-                    className="w-full sm:w-auto py-1.5 px-3 bg-slate-900 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-700/60 font-medium text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    className={`p-3 sm:px-4 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0 ${
+                      company.oaCleared
+                        ? 'bg-emerald-950/50 hover:bg-emerald-900/60 border-emerald-500/60 text-emerald-300 shadow-sm shadow-emerald-500/20'
+                        : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm shadow-amber-500/10'
+                    }`}
+                    title={company.oaCleared ? 'Click to mark as OA not cleared (undo)' : 'Good news! Click if you cleared this OA!'}
                   >
-                    <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Not Shortlisted for OA</span>
+                    {company.oaCleared ? (
+                      <>
+                        <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        </div>
+                        <span className="whitespace-nowrap">OA Not cleared</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                          <Award className="w-3.5 h-3.5 text-amber-400" />
+                        </div>
+                        <span className="whitespace-nowrap">Cleared OA</span>
+                      </>
+                    )}
                   </button>
                 </div>
               )}

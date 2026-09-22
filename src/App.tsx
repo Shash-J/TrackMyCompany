@@ -443,6 +443,7 @@ export const App: React.FC = () => {
     await updateCompany({
       ...target,
       oaStatus,
+      oaCleared: oaStatus === 'not_shortlisted' ? false : target.oaCleared,
       oaRejectionReasonTags: oaStatus === 'not_shortlisted' ? oaRejectionReasonTags : undefined,
       oaCustomReasonNote: oaStatus === 'not_shortlisted' ? oaCustomReasonNote : undefined,
     });
@@ -455,6 +456,31 @@ export const App: React.FC = () => {
         confetti({
           particleCount: 70,
           spread: 60,
+          origin: { y: 0.6 },
+        });
+      } catch (_) {}
+    }
+  };
+
+  const handleToggleOACleared = async (id: string) => {
+    const target = companies.find((c) => c.id === id);
+    if (!target) return;
+
+    const nextCleared = !target.oaCleared;
+
+    await updateCompany({
+      ...target,
+      oaCleared: nextCleared,
+    });
+    const fresh = await getCompanies();
+    setCompanies(fresh);
+
+    // Celebrate clearing OA with confetti!
+    if (nextCleared) {
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 70,
           origin: { y: 0.6 },
         });
       } catch (_) {}
@@ -914,6 +940,7 @@ export const App: React.FC = () => {
                             onDelete={handleDeleteCompany}
                             onQuickStatusChange={handleQuickStatusChange}
                             onUpdateOAStatus={handleUpdateOAStatus}
+                            onToggleOACleared={handleToggleOACleared}
                             draggable={!searchQuery.trim()}
                             onDragStart={handleDragStart}
                             onDragOver={handleDragOver}
@@ -951,6 +978,7 @@ export const App: React.FC = () => {
                             onDelete={handleDeleteCompany}
                             onQuickStatusChange={handleQuickStatusChange}
                             onUpdateOAStatus={handleUpdateOAStatus}
+                            onToggleOACleared={handleToggleOACleared}
                             draggable={!searchQuery.trim()}
                             onDragStart={handleDragStart}
                             onDragOver={handleDragOver}
@@ -986,6 +1014,7 @@ export const App: React.FC = () => {
                           onDelete={handleDeleteCompany}
                           onQuickStatusChange={handleQuickStatusChange}
                           onUpdateOAStatus={handleUpdateOAStatus}
+                          onToggleOACleared={handleToggleOACleared}
                           draggable={!searchQuery.trim()}
                           onDragStart={handleDragStart}
                           onDragOver={handleDragOver}

@@ -120,8 +120,25 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
       color: t.color,
     }));
 
-  // 3. OA Shortlist Data
-  const [oaViewMode, setOaViewMode] = useState<'status' | 'reasons'>('status');
+  // 3. OA Stats Data (Cleared vs Shortlist vs Reasons)
+  const [oaViewMode, setOaViewMode] = useState<'cleared' | 'shortlist' | 'reasons'>('cleared');
+
+  const oaWrittenCount = stats.oaShortlistedCount;
+  const oaClearedCount = companies.filter((c) => c.status === 'applied' && c.oaStatus !== 'not_shortlisted' && c.oaCleared === true).length;
+  const oaNotClearedCount = Math.max(0, oaWrittenCount - oaClearedCount);
+
+  const oaClearedItems: PieChartItem[] = [
+    {
+      label: 'Cleared OA',
+      value: oaClearedCount,
+      color: '#10B981', // Emerald
+    },
+    {
+      label: 'Not Cleared',
+      value: oaNotClearedCount,
+      color: '#F59E0B', // Amber / Yellow
+    },
+  ];
 
   const oaStatusItems: PieChartItem[] = [
     {
@@ -208,26 +225,61 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
           emptyMessage="No companies skipped yet"
         />
 
-        {/* PIE 3: OA SHORTLIST */}
+        {/* PIE 3: OA STATS */}
         <PieChart
-          title="OA shortlist"
-          items={oaViewMode === 'status' ? oaStatusItems : oaReasonItems}
-          centerLabel={oaViewMode === 'status' ? `${stats.totalApplied}` : `${stats.oaNotShortlistedCount}`}
-          centerSublabel={oaViewMode === 'status' ? 'Applied' : 'Filtered'}
-          emptyMessage="No applied companies yet"
+          title="OA stats"
+          items={
+            oaViewMode === 'cleared'
+              ? oaClearedItems
+              : oaViewMode === 'shortlist'
+                ? oaStatusItems
+                : oaReasonItems
+          }
+          centerLabel={
+            oaViewMode === 'cleared'
+              ? `${oaWrittenCount}`
+              : oaViewMode === 'shortlist'
+                ? `${stats.totalApplied}`
+                : `${stats.oaNotShortlistedCount}`
+          }
+          centerSublabel={
+            oaViewMode === 'cleared'
+              ? 'Written'
+              : oaViewMode === 'shortlist'
+                ? 'Applied'
+                : 'Filtered'
+          }
+          emptyMessage={
+            oaViewMode === 'cleared'
+              ? 'No OAs written yet'
+              : oaViewMode === 'shortlist'
+                ? 'No applied companies yet'
+                : 'No companies filtered yet'
+          }
           headerAction={
-            stats.oaNotShortlistedCount > 0 ? (
+            stats.totalApplied > 0 ? (
               <div className="flex items-center gap-1 bg-[#0B0F19] p-0.5 rounded-lg border border-slate-700/80 text-[10px]">
                 <button
                   type="button"
-                  onClick={() => setOaViewMode('status')}
+                  onClick={() => setOaViewMode('cleared')}
                   className={`px-1.5 py-0.5 rounded font-semibold transition-all cursor-pointer ${
-                    oaViewMode === 'status'
+                    oaViewMode === 'cleared'
                       ? 'bg-indigo-600 text-white shadow-xs'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  Status
+                  Cleared
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOaViewMode('shortlist')}
+                  className={`px-1.5 py-0.5 rounded font-semibold transition-all cursor-pointer ${
+                    oaViewMode === 'shortlist'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Shortlist
                 </button>
                 <button
                   type="button"
@@ -363,9 +415,13 @@ export const StatsView: React.FC<StatsViewProps> = ({ stats, companies }) => {
                     )}
 
                     {company.status === 'applied' && company.oaStatus !== 'not_shortlisted' && (
-                      <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                      <span className={`px-2 py-0.5 rounded-full font-bold border flex items-center gap-1 ${
+                        company.oaCleared 
+                          ? 'bg-emerald-500/25 text-emerald-300 border-emerald-500/50' 
+                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      }`}>
                         <CheckCircle2 className="w-2.5 h-2.5" />
-                        Writing OA
+                        {company.oaCleared ? 'Cleared OA ✓' : 'Writing OA'}
                       </span>
                     )}
                   </div>
