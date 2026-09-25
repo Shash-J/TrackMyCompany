@@ -298,5 +298,26 @@ function parseDateToISO(dateStr: string, fullText: string): string | undefined {
     }
   }
 
+  // 3. Month + Day name e.g. "September 25th", "Oct 12, 2026", "Aug 15"
+  const monthDayMatch = s.match(/([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{4}))?/i);
+  if (monthDayMatch) {
+    const monthStr = monthDayMatch[1].toLowerCase().substring(0, 3);
+    if (months[monthStr] !== undefined) {
+      const day = parseInt(monthDayMatch[2], 10);
+      const month = months[monthStr];
+      let year = monthDayMatch[3] ? parseInt(monthDayMatch[3], 10) : null;
+      if (!year) {
+        const dateMatch = fullText.match(/\b\d{1,2}\/\d{1,2}\/(202\d)\b/);
+        if (dateMatch) {
+          year = parseInt(dateMatch[1], 10);
+        } else {
+          year = new Date().getFullYear();
+        }
+      }
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${year}-${pad(month + 1)}-${pad(day)}`;
+    }
+  }
+
   return undefined;
 }

@@ -611,16 +611,37 @@ export const App: React.FC = () => {
     }
 
     const current = await getCompanies();
-    const existingNames = new Set(current.map((c) => c.name.trim().toLowerCase()));
-    const newItems = imported.filter((c) => !existingNames.has(c.name.trim().toLowerCase()));
-    const merged = [...newItems, ...current];
+    const merged = [...current];
+    let newItemsCount = 0;
+
+    imported.forEach((incoming) => {
+      const idx = merged.findIndex(
+        (c) => (incoming.id && c.id === incoming.id) || c.name.trim().toLowerCase() === incoming.name.trim().toLowerCase()
+      );
+      if (idx >= 0) {
+        // Update existing record with incoming non-empty values while keeping ID and creation timestamp
+        merged[idx] = {
+          ...merged[idx],
+          ...incoming,
+          id: merged[idx].id,
+          createdAt: merged[idx].createdAt,
+          updatedAt: new Date().toISOString(),
+          notes: incoming.notes || merged[idx].notes,
+          formLink: incoming.formLink || merged[idx].formLink,
+          oaDate: incoming.oaDate || merged[idx].oaDate,
+        };
+      } else {
+        merged.unshift(incoming);
+        newItemsCount++;
+      }
+    });
 
     await saveCompanies(merged);
     setCompanies(merged);
     setJustImported(true);
     setCurrentTab('dashboard');
 
-    if (newItems.length > 0) {
+    if (newItemsCount > 0) {
       const isStandaloneMode = 
         (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || 
         (typeof navigator !== 'undefined' && (navigator as any).standalone === true);

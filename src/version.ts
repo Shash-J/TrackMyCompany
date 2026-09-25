@@ -1,4 +1,4 @@
 // TrackMyCompany Application Version
 // Single source of truth for app versioning across the UI, About modal, and Service Worker cache
-export const APP_VERSION = '1.4.1';
-export const APP_BUILD_DATE = '2026-09-22';
+export const APP_VERSION = '1.4.2';
+export const APP_BUILD_DATE = '2026-09-25';

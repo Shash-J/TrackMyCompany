@@ -61,9 +61,22 @@ let isInitialized = false;
  * Initialize storage engine (IndexedDB + one-time migration from localStorage).
  */
 export const initStorage = async (): Promise<{ companies: Company[]; profile: StudentProfile | null }> => {
-  await initDB();
-  memoryCompanies = await getCompaniesFromDB();
-  memoryProfile = await getProfileFromDB();
+  try {
+    await initDB();
+    memoryCompanies = await getCompaniesFromDB();
+    memoryProfile = await getProfileFromDB();
+  } catch (err) {
+    console.warn('[Storage] IndexedDB initialization failed, falling back to localStorage:', err);
+    try {
+      const rawC = localStorage.getItem(STORAGE_KEY_COMPANIES);
+      memoryCompanies = rawC ? JSON.parse(rawC) : [];
+      const rawP = localStorage.getItem(STORAGE_KEY_PROFILE);
+      memoryProfile = rawP ? JSON.parse(rawP) : null;
+    } catch (_) {
+      memoryCompanies = [];
+      memoryProfile = null;
+    }
+  }
   isInitialized = true;
   return { companies: memoryCompanies, profile: memoryProfile };
 };
@@ -72,9 +85,22 @@ export const getProfile = async (): Promise<StudentProfile | null> => {
   if (!isInitialized) {
     await initStorage();
   }
-  const profile = await getProfileFromDB();
-  memoryProfile = profile;
-  return profile;
+  try {
+    const profile = await getProfileFromDB();
+    if (profile) {
+      memoryProfile = profile;
+      return profile;
+    }
+  } catch (err) {
+    console.warn('[Storage] Failed to read profile from DB:', err);
+  }
+  if (!memoryProfile) {
+    try {
+      const rawP = localStorage.getItem(STORAGE_KEY_PROFILE);
+      if (rawP) memoryProfile = JSON.parse(rawP);
+    } catch (_) {}
+  }
+  return memoryProfile;
 };
 
 export const getProfileSync = (): StudentProfile | null => {
@@ -83,7 +109,11 @@ export const getProfileSync = (): StudentProfile | null => {
 
 export const saveProfile = async (profile: StudentProfile): Promise<void> => {
   memoryProfile = { ...profile };
-  await saveProfileToDB(profile);
+  try {
+    await saveProfileToDB(profile);
+  } catch (err) {
+    console.warn('[Storage] Failed to save profile to DB, falling back to localStorage:', err);
+  }
   // Keep localStorage updated as fallback
   try {
     localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile));
@@ -95,9 +125,22 @@ export const getCompanies = async (): Promise<Company[]> => {
   if (!isInitialized) {
     await initStorage();
   }
-  const companies = await getCompaniesFromDB();
-  memoryCompanies = companies;
-  return companies;
+  try {
+    const companies = await getCompaniesFromDB();
+    if (companies && companies.length > 0) {
+      memoryCompanies = companies;
+      return companies;
+    }
+  } catch (err) {
+    console.warn('[Storage] Failed to read companies from DB:', err);
+  }
+  if (memoryCompanies.length === 0) {
+    try {
+      const rawC = localStorage.getItem(STORAGE_KEY_COMPANIES);
+      if (rawC) memoryCompanies = JSON.parse(rawC);
+    } catch (_) {}
+  }
+  return memoryCompanies;
 };
 
 export const getCompaniesSync = (): Company[] => {
@@ -106,7 +149,11 @@ export const getCompaniesSync = (): Company[] => {
 
 export const saveCompanies = async (companies: Company[]): Promise<void> => {
   memoryCompanies = [...companies];
-  await saveCompaniesToDB(companies);
+  try {
+    await saveCompaniesToDB(companies);
+  } catch (err) {
+    console.warn('[Storage] Failed to save companies to DB, falling back to localStorage:', err);
+  }
   // Keep localStorage updated as fallback
   try {
     localStorage.setItem(STORAGE_KEY_COMPANIES, JSON.stringify(companies));

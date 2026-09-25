@@ -1,13 +1,14 @@
 {
   "name": "trackmycompany",
   "private": true,
-  "version": "1.4.1",
+  "version": "1.4.2",
   "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "tsx src/services/__tests__/engine.test.ts && tsx src/services/__tests__/excel.test.ts",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
