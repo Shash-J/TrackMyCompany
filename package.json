@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "tsx src/services/__tests__/engine.test.ts && tsx src/services/__tests__/excel.test.ts",
+    "test": "npx tsx src/services/__tests__/engine.test.ts && npx tsx src/services/__tests__/excel.test.ts",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"

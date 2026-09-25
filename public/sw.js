@@ -1,5 +1,5 @@
 // TrackMyCompany PWA Service Worker
-const CACHE_NAME = 'trackmycompany-v1.4.1';
+const CACHE_NAME = 'trackmycompany-v1.4.2';
 
 const PRECACHE_ASSETS = [
   './',
@@ -7,10 +7,19 @@ const PRECACHE_ASSETS = [
   './favicon.svg',
   './favicon.ico',
   './manifest.json',
+  './version.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-icon-512.png'
 ];
+
+// Message listener: client can request skipWaiting directly
+self.addEventListener('message', (event) => {
+  if (event.data && (event.data.type === 'SKIP_WAITING' || event.data === 'skipWaiting')) {
+    console.log('[ServiceWorker] Skip waiting activated via client message');
+    self.skipWaiting();
+  }
+});
 
 // Install: Cache initial essential shell
 self.addEventListener('install', (event) => {
@@ -48,6 +57,11 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
+
+  // Never intercept version.json or sw.js so update checks always hit the network directly
+  if (url.pathname.endsWith('version.json') || url.pathname.endsWith('sw.js')) {
+    return;
+  }
 
   // Enforce HTTPS inside Service Worker for all non-localhost navigations
   if (url.protocol === 'http:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {

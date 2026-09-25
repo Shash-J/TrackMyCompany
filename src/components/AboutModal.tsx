@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   ShieldCheck, 
@@ -22,6 +22,8 @@ interface AboutModalProps {
   isStandalone?: boolean;
 }
 
+type UpdateCheckState = 'idle' | 'checking' | 'latest' | 'available' | 'updating' | 'offline' | 'error';
+
 export const AboutModal: React.FC<AboutModalProps> = ({ 
   isOpen, 
   onClose,
@@ -29,8 +31,27 @@ export const AboutModal: React.FC<AboutModalProps> = ({
   isStandalone = false
 }) => {
   const [copied, setCopied] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'latest'>('idle');
+  const [updateStatus, setUpdateStatus] = useState<UpdateCheckState>('idle');
+  const [detectedVersion, setDetectedVersion] = useState<string | null>(null);
   const contactEmail = 'shasedujois@gmail.com';
+
+  // Quiet background check when About modal opens
+  useEffect(() => {
+    if (isOpen && updateStatus === 'idle') {
+      fetch(`./version.json?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.version && data.version !== APP_VERSION) {
+            setDetectedVersion(String(data.version).trim());
+            setUpdateStatus('available');
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen, updateStatus]);
 
   if (!isOpen) return null;
 
@@ -41,24 +62,102 @@ export const AboutModal: React.FC<AboutModalProps> = ({
   };
 
   const handleCheckUpdate = async () => {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
-      setUpdateStatus('latest');
-      setTimeout(() => setUpdateStatus('idle'), 3000);
-      return;
-    }
     setUpdateStatus('checking');
     try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg) {
-        await reg.update();
+      // 1. Fetch version.json directly from network bypassing all caches
+      let remoteVersion: string | null = null;
+      try {
+        const res = await fetch(`./version.json?_t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.version) {
+            remoteVersion = String(data.version).trim();
+          }
+        }
+      } catch (fetchErr) {
+        console.warn('[PWA] version.json network fetch error:', fetchErr);
       }
-      setTimeout(() => {
-        setUpdateStatus('latest');
-        setTimeout(() => setUpdateStatus('idle'), 3000);
-      }, 800);
-    } catch {
+
+      // Check if device is offline
+      if (!navigator.onLine && !remoteVersion) {
+        setUpdateStatus('offline');
+        setTimeout(() => setUpdateStatus('idle'), 3500);
+        return;
+      }
+
+      // 2. Query Service Worker registration & trigger background update
+      let swReg: ServiceWorkerRegistration | undefined;
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        try {
+          swReg = await navigator.serviceWorker.getRegistration();
+          if (swReg) {
+            await swReg.update();
+          }
+        } catch (swErr) {
+          console.warn('[PWA] Service worker update check error:', swErr);
+        }
+      }
+
+      // 3. Determine if update is available:
+      // A: Remote server version is different from currently running APP_VERSION
+      const isNewerVersion = Boolean(remoteVersion && remoteVersion !== APP_VERSION);
+      // B: A new service worker is installing or waiting
+      const hasWaitingSW = Boolean(swReg && (swReg.waiting || swReg.installing));
+
+      if (isNewerVersion || hasWaitingSW) {
+        setDetectedVersion(remoteVersion || 'new version');
+        setUpdateStatus('available');
+        return;
+      }
+
+      // 4. Truly up to date
       setUpdateStatus('latest');
-      setTimeout(() => setUpdateStatus('idle'), 3000);
+      setTimeout(() => setUpdateStatus('idle'), 3500);
+    } catch (err) {
+      console.error('[PWA] Update check failure:', err);
+      setUpdateStatus('error');
+      setTimeout(() => setUpdateStatus('idle'), 3500);
+    }
+  };
+
+  const handleApplyUpdate = async () => {
+    setUpdateStatus('updating');
+    try {
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          } else if (reg.installing) {
+            reg.installing.addEventListener('statechange', (e: any) => {
+              if (e.target?.state === 'installed') {
+                reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          }
+        }
+      }
+
+      // Clear caches to ensure immediate freshness
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        try {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        } catch (_) {}
+      }
+
+      // Refresh application to load new bundle
+      setTimeout(() => {
+        window.location.reload();
+      }, 400);
+    } catch {
+      window.location.reload();
     }
   };
 
@@ -70,49 +169,100 @@ export const AboutModal: React.FC<AboutModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-[#0B0F19]/90">
-          <div className="flex items-center gap-3">
-            <img 
-              src="./icons/icon-192.png" 
-              alt="TrackMyCompany Logo" 
-              className="w-9 h-9 rounded-xl shadow-md shadow-indigo-500/25 border border-indigo-400/30 shrink-0 object-contain" 
-            />
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-bold text-white tracking-tight leading-tight">
-                  TrackMyCompany
-                </h2>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
-                  v{APP_VERSION}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleCheckUpdate}
-                  disabled={updateStatus === 'checking'}
-                  className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 hover:text-indigo-300 px-1.5 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 transition-colors cursor-pointer active:scale-95 disabled:opacity-60"
-                  title="Check for application updates"
-                >
-                  <RefreshCw className={`w-2.5 h-2.5 ${updateStatus === 'checking' ? 'animate-spin text-indigo-400' : updateStatus === 'latest' ? 'text-emerald-400' : ''}`} />
-                  <span>
-                    {updateStatus === 'checking' 
-                      ? 'Checking...' 
-                      : updateStatus === 'latest' 
-                        ? 'Latest ✓' 
-                        : 'Check update'}
+        <div className="px-5 py-4 border-b border-slate-800 flex flex-col bg-[#0B0F19]/90">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img 
+                src="./icons/icon-192.png" 
+                alt="TrackMyCompany Logo" 
+                className="w-9 h-9 rounded-xl shadow-md shadow-indigo-500/25 border border-indigo-400/30 shrink-0 object-contain" 
+              />
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base font-bold text-white tracking-tight leading-tight">
+                    TrackMyCompany
+                  </h2>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
+                    v{APP_VERSION}
                   </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={updateStatus === 'available' ? handleApplyUpdate : handleCheckUpdate}
+                    disabled={updateStatus === 'checking' || updateStatus === 'updating'}
+                    className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded transition-all cursor-pointer active:scale-95 disabled:opacity-60 ${
+                      updateStatus === 'available'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 hover:bg-amber-500/30 shadow-xs shadow-amber-500/20 font-bold'
+                        : updateStatus === 'latest'
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                          : updateStatus === 'offline' || updateStatus === 'error'
+                            ? 'bg-rose-500/10 text-rose-300 border border-rose-500/30'
+                            : 'text-slate-400 hover:text-indigo-300 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60'
+                    }`}
+                    title={updateStatus === 'available' ? 'Click to apply update now' : 'Check for application updates'}
+                  >
+                    <RefreshCw className={`w-2.5 h-2.5 ${
+                      updateStatus === 'checking' || updateStatus === 'updating' 
+                        ? 'animate-spin text-indigo-400' 
+                        : updateStatus === 'available'
+                          ? 'text-amber-400'
+                          : updateStatus === 'latest' 
+                            ? 'text-emerald-400' 
+                            : ''
+                    }`} />
+                    <span>
+                      {updateStatus === 'checking' 
+                        ? 'Checking...' 
+                        : updateStatus === 'updating'
+                          ? 'Updating...'
+                          : updateStatus === 'available'
+                            ? `Update to v${detectedVersion || 'new'} 🚀`
+                            : updateStatus === 'latest' 
+                              ? 'Latest ✓' 
+                              : updateStatus === 'offline'
+                                ? 'Offline'
+                                : updateStatus === 'error'
+                                  ? 'Check failed'
+                                  : 'Check update'}
+                    </span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                  Campus Placement & Company Tracker
+                </p>
               </div>
-              <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                Campus Placement & Company Tracker
-              </p>
             </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer active:scale-95"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer active:scale-95"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          {/* Update Available Banner */}
+          {updateStatus === 'available' && (
+            <div className="mt-3 p-2.5 px-3 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-between gap-2 animate-fadeIn">
+              <div className="flex items-center gap-2 text-amber-300 text-xs font-semibold">
+                <RefreshCw className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Update <strong>v{detectedVersion}</strong> is ready!</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleApplyUpdate}
+                className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] rounded-lg shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
+              >
+                Update Now 🚀
+              </button>
+            </div>
+          )}
+
+          {/* Updating Banner */}
+          {updateStatus === 'updating' && (
+            <div className="mt-3 p-2.5 px-3 rounded-xl bg-indigo-500/15 border border-indigo-500/40 flex items-center gap-2 text-indigo-300 text-xs font-semibold animate-pulse">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400 shrink-0" />
+              <span>Applying updates and refreshing application...</span>
+            </div>
+          )}
         </div>
 
         {/* Content */}
