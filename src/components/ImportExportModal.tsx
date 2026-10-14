@@ -26,7 +26,7 @@ interface ImportExportModalProps {
   onClose: () => void;
   companies: Company[];
   profile?: StudentProfile | null;
-  onImportComplete: (importedCompanies: Company[], importedProfile?: StudentProfile) => void;
+  onImportComplete: (importedCompanies: Company[], importedProfile?: StudentProfile) => void | Promise<void>;
   initialTab?: 'import' | 'export' | 'backup';
 }
 
@@ -81,7 +81,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
     try {
       const result = await parseExcelOrCSVFile(file);
       if (result.success && (result.companies.length > 0 || result.profile)) {
-        onImportComplete(result.companies, result.profile);
+        await onImportComplete(result.companies, result.profile);
         setStatusMessage({
           type: 'success',
           message: `Successfully imported ${result.importedCount} companies${result.profile ? ` and restored profile for ${result.profile.name}` : ''}!`,
@@ -168,7 +168,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
         }
       } catch (err) {
         console.error('Failed to read backup file:', err);
-        setStatusMessage({ type: 'error', message: 'Failed to read backup file.' });
+        setStatusMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to read backup file.' });
       }
     };
     reader.readAsText(file);

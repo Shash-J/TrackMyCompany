@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Building2, 
@@ -30,7 +30,7 @@ import { parseWhatsAppMessage } from '../services/whatsappParser';
 interface CompanyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (companyData: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>, editId?: string) => void;
+  onSave: (companyData: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>, editId?: string) => void | Promise<void>;
   editCompany?: Company | null;
   defaultStatus?: ApplicationStatus;
 }
@@ -73,6 +73,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
   const [customReasonNote, setCustomReasonNote] = useState('');
 
   const [formError, setFormError] = useState('');
+  const saving = useRef(false);
 
   useEffect(() => {
     if (editCompany) {
@@ -114,6 +115,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setStatus(defaultStatus === 'not_applied' ? 'not_applied' : 'applied');
       setOaDate('');
       setOaStatusState('shortlisted');
+      setOaClearedState(undefined);
       setOaRejectionReasonTags(['CGPA']);
       setOaCustomReasonNote('');
       setRejectionReasonTags(['CTC']);
@@ -202,8 +204,9 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
     });
   };
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (saving.current) return;
     if (!name.trim()) {
       setFormError('Company Name is required.');
       return;
@@ -211,37 +214,46 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
 
     const currentStatus: ApplicationStatus = status === 'not_applied' ? 'not_applied' : 'applied';
 
-    onSave(
-      {
-        name: name.trim(),
-        type: type.trim() || 'Full Time (FTE)',
-        role: role.trim() || undefined,
-        tier,
-        ctc: ctc.trim() || 'Not Disclosed',
-        oaDate: oaDate ? oaDate : undefined,
-        notes: notes.trim() || undefined,
-        status: currentStatus,
-        // Applied fields
-        oaStatus: currentStatus === 'applied' 
-          ? (editCompany ? oaStatusState : 'shortlisted') 
-          : undefined,
-        oaCleared: currentStatus === 'applied' && oaStatusState !== 'not_shortlisted'
-          ? oaClearedState
-          : undefined,
-        oaRejectionReasonTags: currentStatus === 'applied' && oaStatusState === 'not_shortlisted'
-          ? oaRejectionReasonTags
-          : undefined,
-        oaCustomReasonNote: currentStatus === 'applied' && oaStatusState === 'not_shortlisted' && oaCustomReasonNote.trim()
-          ? oaCustomReasonNote.trim()
-          : undefined,
-        // Not applied fields
-        rejectionReasonTags: currentStatus === 'not_applied' ? rejectionReasonTags : undefined,
-        customReasonNote: currentStatus === 'not_applied' && customReasonNote.trim() ? customReasonNote.trim() : undefined,
-      },
-      editCompany ? editCompany.id : undefined
-    );
+    saving.current = true;
+    try {
+      await onSave(
+        {
+          name: name.trim(),
+          type: type.trim() || 'Full Time (FTE)',
+          role: role.trim() || undefined,
+          tier,
+          ctc: ctc.trim() || 'Not Disclosed',
+          oaDate: oaDate ? oaDate : undefined,
+          notes: notes.trim() || undefined,
+          status: currentStatus,
+          // Applied fields
+          oaStatus: currentStatus === 'applied'
+            ? (editCompany ? oaStatusState : 'shortlisted')
+            : undefined,
+          oaCleared: currentStatus === 'applied' && oaStatusState !== 'not_shortlisted'
+            ? oaClearedState
+            : undefined,
+          oaRejectionReasonTags: currentStatus === 'applied' && oaStatusState === 'not_shortlisted'
+            ? oaRejectionReasonTags
+            : undefined,
+          oaCustomReasonNote: currentStatus === 'applied' && oaStatusState === 'not_shortlisted' && oaCustomReasonNote.trim()
+            ? oaCustomReasonNote.trim()
+            : undefined,
+          // Not applied fields
+          rejectionReasonTags: currentStatus === 'not_applied' ? rejectionReasonTags : undefined,
+          customReasonNote: currentStatus === 'not_applied' && customReasonNote.trim() ? customReasonNote.trim() : undefined,
+        },
+        editCompany ? editCompany.id : undefined
+      );
 
-    onClose();
+      onClose();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not save your changes. Please try again.';
+      setFormError(message);
+      if (mode === 'parsed-confirm') window.alert(message);
+    } finally {
+      saving.current = false;
+    }
   };
 
   return (

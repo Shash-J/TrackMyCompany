@@ -1,4 +1,10 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+/* Only application sources supply class names; fixtures/prose cannot add CSS. */
+@source "./";
+@source "../index.html";
+@source not "./services/__tests__";
+/* Keep the existing document selection styles and generated utility set. */
+@source inline("contents selection:bg-indigo-500 selection:text-white");
 
 @layer base {
   :root {

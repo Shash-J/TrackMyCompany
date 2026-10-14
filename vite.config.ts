@@ -3,57 +3,43 @@ import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, type Plugin } from 'vite'
 import fs from 'node:fs'
 import path from 'node:path'
+import { createHash } from 'node:crypto'
+import { APP_VERSION, APP_BUILD_DATE } from './src/version.ts'
 
-function pwaVersionSyncPlugin(): Plugin {
+// Publish a complete, content-versioned shell without mutating tracked sources.
+function offlineShellPlugin(): Plugin {
+  let outDir: string;
   return {
-    name: 'pwa-version-sync',
-    buildStart() {
-      try {
-        const rootDir = import.meta.dirname || process.cwd();
-        const versionFilePath = path.resolve(rootDir, 'src/version.ts');
-        if (fs.existsSync(versionFilePath)) {
-          const versionContent = fs.readFileSync(versionFilePath, 'utf-8');
-          const vMatch = versionContent.match(/APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
-          const dMatch = versionContent.match(/APP_BUILD_DATE\s*=\s*['"]([^'"]+)['"]/);
-          const appVersion = vMatch ? vMatch[1] : '1.4.2';
-          const appBuildDate = dMatch ? dMatch[1] : new Date().toISOString().split('T')[0];
-
-          // 1. Sync public/version.json
-          const versionJsonPath = path.resolve(rootDir, 'public/version.json');
-          fs.writeFileSync(
-            versionJsonPath,
-            JSON.stringify(
-              {
-                version: appVersion,
-                buildDate: appBuildDate,
-                timestamp: Date.now(),
-              },
-              null,
-              2
-            )
-          );
-
-          // 2. Sync public/sw.js
-          const swPath = path.resolve(rootDir, 'public/sw.js');
-          if (fs.existsSync(swPath)) {
-            let swContent = fs.readFileSync(swPath, 'utf-8');
-            swContent = swContent.replace(
-              /const CACHE_NAME = ['"]trackmycompany-v[^'"]+['"];/,
-              `const CACHE_NAME = 'trackmycompany-v${appVersion}';`
-            );
-            fs.writeFileSync(swPath, swContent);
-          }
-        }
-      } catch (err) {
-        console.warn('[Vite] Version sync plugin non-fatal error:', err);
-      }
+    name: 'offline-shell',
+    apply: 'build',
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true })
+        .flatMap(entry => entry.isDirectory()
+          ? walk(path.join(dir, entry.name))
+          : [path.join(dir, entry.name)]);
+      const files = walk(outDir)
+        .map(file => path.relative(outDir, file).replaceAll('\\', '/'))
+        .filter(file => !['sw.js', 'version.json', 'CNAME'].includes(file))
+        .sort();
+      const workerPath = path.join(outDir, 'sw.js');
+      const template = fs.readFileSync(workerPath, 'utf8');
+      const hash = createHash('sha256').update(template).update(APP_VERSION).update(APP_BUILD_DATE);
+      for (const file of files) hash.update(file).update(fs.readFileSync(path.join(outDir, file)));
+      const revision = hash.digest('hex').slice(0, 16);
+      fs.writeFileSync(workerPath, template
+        .replace('__BUILD_REVISION__', revision)
+        .replace('/* __PRECACHE_ASSETS__ */', files.map(file => JSON.stringify(`./${file}`)).join(',\n  ')));
+      fs.writeFileSync(path.join(outDir, 'version.json'), JSON.stringify({
+        version: APP_VERSION, buildDate: APP_BUILD_DATE, revision,
+      }, null, 2));
     },
   };
 }
 
-// https://vite.dev/config/
 export default defineConfig({
   base: './',
-  plugins: [pwaVersionSyncPlugin(), react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), offlineShellPlugin()],
 })
-

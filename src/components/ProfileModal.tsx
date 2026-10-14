@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, GraduationCap, ArrowRight, X, Code2 } from 'lucide-react';
 import { GithubIcon } from './GithubIcon';
 import type { StudentProfile } from '../types';
@@ -7,7 +7,7 @@ interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentProfile: StudentProfile | null;
-  onSave: (profile: StudentProfile) => void;
+  onSave: (profile: StudentProfile) => void | Promise<void>;
   isFirstTime?: boolean;
   onImportClick?: () => void;
 }
@@ -24,9 +24,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [branch, setBranch] = useState('');
   const [batch, setBatch] = useState('2027');
   const [error, setError] = useState('');
+  const saving = useRef(false);
+  const wasOpen = useRef(false);
 
   useEffect(() => {
-    if (currentProfile) {
+    const opening = isOpen && !wasOpen.current;
+    wasOpen.current = isOpen;
+    // Background refreshes may return a new profile object while the student
+    // is typing. Initialize on opening, then retain the draft until closing.
+    if (opening && currentProfile) {
       setName(currentProfile.name || '');
       setBranch(currentProfile.branch || '');
       setBatch(currentProfile.batch || '2027');
@@ -35,19 +41,27 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving.current) return;
     if (!name.trim()) {
       setError('Student Name is required to personalize your placement tracker.');
       return;
     }
     setError('');
-    onSave({
-      name: name.trim(),
-      branch: branch.trim() || undefined,
-      batch: batch.trim() || '2027',
-    });
-    onClose();
+    saving.current = true;
+    try {
+      await onSave({
+        name: name.trim(),
+        branch: branch.trim() || undefined,
+        batch: batch.trim() || '2027',
+      });
+      onClose();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Could not save your changes. Please try again.');
+    } finally {
+      saving.current = false;
+    }
   };
 
   return (

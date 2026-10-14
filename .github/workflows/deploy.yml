@@ -29,14 +29,26 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate storage and offline contracts
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
       - name: Build
         run: npm run build
+
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate production app
+        run: npm run test:e2e
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

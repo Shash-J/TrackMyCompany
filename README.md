@@ -151,7 +151,7 @@ When you apply to companies, some will shortlist you for the Online Assessment (
 > This section is strictly for developers who wish to inspect the codebase, run the project locally, or contribute improvements. Regular users should simply open [trackmycompany.online](https://trackmycompany.online).
 
 ### Prerequisites
-- Node.js 18+ & npm
+- Node.js 22 & npm
 
 ### Local Development Setup
 ```bash
@@ -216,3 +216,7 @@ To obtain a commercial license or discuss business partnership opportunities, pl
 
 - Built with ❤️ exclusively for college students navigating campus placements.
 
+
+## Reliability validation
+
+See [the engineering review](docs/reliability-review.md) for the startup findings, measured results, test commands, and remaining reliability work. Run `npm test`, `npm run lint`, `npm run build`, and `npm run test:e2e` before submitting changes. Install the test browser once with `npx playwright install chromium`.

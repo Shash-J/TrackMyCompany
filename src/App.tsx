@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import confetti from 'canvas-confetti';
 import { 
   Search, 
@@ -100,15 +100,16 @@ const getCompanyGroup = (company: Company): CompanyListGroup => {
 };
 import { 
   getCompanies, 
-  saveCompanies, 
+  mutateCompanies,
+  mergeImportedCompanies,
   addCompany, 
-  updateCompany, 
+  patchCompany,
   deleteCompany, 
-  getProfile, 
   saveProfile, 
   calculateStatistics,
   initStorage
 } from './services/storage';
+import { readStorage } from './services/persistence';
 import { Navbar } from './components/Navbar';
 import type { NavTab } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -116,7 +117,8 @@ import { CompanyCard } from './components/CompanyCard';
 import { CompanyModal } from './components/CompanyModal';
 import { ProfileModal } from './components/ProfileModal';
 import { StatsView } from './components/StatsView';
-import { ImportExportModal } from './components/ImportExportModal';
+const ImportExportModal = lazy(() => import('./components/ImportExportModal')
+  .then(module => ({ default: module.ImportExportModal })));
 import { AboutModal } from './components/AboutModal';
 import { InstallPromptModal } from './components/InstallPromptModal';
 import { TodayDriveReminderModal } from './components/TodayDriveReminderModal';
@@ -159,9 +161,7 @@ export const App: React.FC = () => {
 
     const loadInitialData = async () => {
       try {
-        await initStorage();
-        const loadedCompanies = await getCompanies();
-        const loadedProfile = await getProfile();
+        const { companies: loadedCompanies, profile: loadedProfile } = await initStorage();
 
         if (!isMounted) return;
         setCompanies(loadedCompanies);
@@ -178,22 +178,26 @@ export const App: React.FC = () => {
 
     loadInitialData();
 
-    const handleStorageChange = async () => {
-      const freshCompanies = await getCompanies();
-      const freshProfile = await getProfile();
-      if (isMounted) {
-        setCompanies(freshCompanies);
-        setProfile(freshProfile);
-      }
+    const handleStorageChange = async (event?: Event) => {
+      if (event?.type === 'storage' && (event as StorageEvent).key !== 'track_my_company_snapshot_v2') return;
+      try {
+        const fresh = await readStorage();
+        if (isMounted) {
+          setCompanies(fresh.companies);
+          setProfile(fresh.profile);
+        }
+      } catch (error) { console.error('Failed to refresh storage', error); }
     };
 
-    window.addEventListener('storage-companies-change', handleStorageChange);
-    window.addEventListener('storage-profile-change', handleStorageChange);
+    window.addEventListener('storage-data-change', handleStorageChange);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleStorageChange);
 
     return () => {
       isMounted = false;
-      window.removeEventListener('storage-companies-change', handleStorageChange);
-      window.removeEventListener('storage-profile-change', handleStorageChange);
+      window.removeEventListener('storage-data-change', handleStorageChange);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleStorageChange);
     };
   }, []);
 
@@ -360,6 +364,13 @@ export const App: React.FC = () => {
     setIsTodayReminderOpen(false);
   };
 
+  const reportStorageFailure = (error: unknown) => {
+    console.error('Storage write failed', error);
+    window.alert(error instanceof Error ? error.message : 'Could not save your changes. Please try again.');
+  };
+  const safely = <Args extends unknown[]>(action: (...args: Args) => Promise<void>) =>
+    (...args: Args) => { void action(...args).catch(reportStorageFailure); };
+
   // Profile Save
   const handleSaveProfile = async (newProfile: StudentProfile) => {
     await saveProfile(newProfile);
@@ -374,7 +385,7 @@ export const App: React.FC = () => {
     if (editId) {
       const existing = companies.find((c) => c.id === editId);
       if (existing) {
-        await updateCompany({ ...existing, ...data });
+        await patchCompany(editId, data);
         const fresh = await getCompanies();
         setCompanies(fresh);
       }
@@ -413,20 +424,18 @@ export const App: React.FC = () => {
     if (!target) return;
 
     if (newStatus === 'applied') {
-      await updateCompany({
-        ...target,
+      await patchCompany(id, current => ({
         status: 'applied',
-        oaStatus: target.oaStatus || 'shortlisted',
+        oaStatus: current.oaStatus || 'shortlisted',
         rejectionReasonTags: undefined,
         customReasonNote: undefined,
-      });
+      }));
     } else {
-      await updateCompany({
-        ...target,
+      await patchCompany(id, current => ({
         status: 'not_applied',
-        rejectionReasonTags: rejectionReasonTags && rejectionReasonTags.length > 0 ? rejectionReasonTags : (target.rejectionReasonTags || ['Others']),
-        customReasonNote: customReasonNote !== undefined ? customReasonNote : target.customReasonNote,
-      });
+        rejectionReasonTags: rejectionReasonTags && rejectionReasonTags.length > 0 ? rejectionReasonTags : (current.rejectionReasonTags || ['Others']),
+        customReasonNote: customReasonNote !== undefined ? customReasonNote : current.customReasonNote,
+      }));
     }
     const fresh = await getCompanies();
     setCompanies(fresh);
@@ -441,13 +450,13 @@ export const App: React.FC = () => {
     const target = companies.find((c) => c.id === id);
     if (!target) return;
 
-    await updateCompany({
-      ...target,
+    await patchCompany(id, current => ({
       oaStatus,
-      oaCleared: oaStatus === 'not_shortlisted' ? undefined : target.oaCleared,
+      oaCleared: oaStatus === 'not_shortlisted' || current.oaStatus === 'not_shortlisted'
+        ? undefined : current.oaCleared,
       oaRejectionReasonTags: oaStatus === 'not_shortlisted' ? oaRejectionReasonTags : undefined,
       oaCustomReasonNote: oaStatus === 'not_shortlisted' ? oaCustomReasonNote : undefined,
-    });
+    }));
     const fresh = await getCompanies();
     setCompanies(fresh);
 
@@ -467,10 +476,7 @@ export const App: React.FC = () => {
     const target = companies.find((c) => c.id === id);
     if (!target) return;
 
-    await updateCompany({
-      ...target,
-      oaCleared: cleared,
-    });
+    await patchCompany(id, { oaCleared: cleared });
     const fresh = await getCompanies();
     setCompanies(fresh);
 
@@ -501,53 +507,55 @@ export const App: React.FC = () => {
   const reorderCompanies = async (sourceId: string, targetId: string) => {
     if (sourceId === targetId) return;
 
-    const source = companies.find((c) => c.id === sourceId);
-    const target = companies.find((c) => c.id === targetId);
-    if (!source || !target) return;
+    const fresh = await mutateCompanies(current => {
+      const source = current.find((c) => c.id === sourceId);
+      const target = current.find((c) => c.id === targetId);
+      if (!source || !target) return current;
 
-    const sourceGroup = getCompanyGroup(source);
-    const targetGroup = getCompanyGroup(target);
-    // Strict restriction: Dragging & dropping only within the same group
-    if (sourceGroup !== targetGroup) return;
+      const sourceGroup = getCompanyGroup(source);
+      const targetGroup = getCompanyGroup(target);
+      // Strict restriction: Dragging & dropping only within the same group
+      if (sourceGroup !== targetGroup) return current;
 
-    const groupItems = companies.filter((c) => getCompanyGroup(c) === sourceGroup);
-    const sourceIdx = groupItems.findIndex((c) => c.id === sourceId);
-    const targetIdx = groupItems.findIndex((c) => c.id === targetId);
-    if (sourceIdx === -1 || targetIdx === -1) return;
+      const groupItems = current.filter((c) => getCompanyGroup(c) === sourceGroup);
+      const sourceIdx = groupItems.findIndex((c) => c.id === sourceId);
+      const targetIdx = groupItems.findIndex((c) => c.id === targetId);
+      if (sourceIdx === -1 || targetIdx === -1) return current;
 
-    // Pure rank shifting inside this group
-    const newGroupItems = [...groupItems];
-    const [movedItem] = newGroupItems.splice(sourceIdx, 1);
-    newGroupItems.splice(targetIdx, 0, movedItem);
+      // Pure rank shifting inside this group
+      const newGroupItems = [...groupItems];
+      const [movedItem] = newGroupItems.splice(sourceIdx, 1);
+      newGroupItems.splice(targetIdx, 0, movedItem);
 
-    // Reconstruct master list maintaining group boundaries
-    const active = companies.filter((c) => getCompanyGroup(c) === 'applied_active');
-    const notClearedOA = companies.filter((c) => getCompanyGroup(c) === 'applied_not_cleared_oa');
-    const notShortlisted = companies.filter((c) => getCompanyGroup(c) === 'applied_not_shortlisted');
-    const skipped = companies.filter((c) => getCompanyGroup(c) === 'skipped');
-    const others = companies.filter(
-      (c) => !['applied_active', 'applied_not_cleared_oa', 'applied_not_shortlisted', 'skipped'].includes(getCompanyGroup(c))
-    );
+      // Reconstruct master list maintaining group boundaries
+      const active = current.filter((c) => getCompanyGroup(c) === 'applied_active');
+      const notClearedOA = current.filter((c) => getCompanyGroup(c) === 'applied_not_cleared_oa');
+      const notShortlisted = current.filter((c) => getCompanyGroup(c) === 'applied_not_shortlisted');
+      const skipped = current.filter((c) => getCompanyGroup(c) === 'skipped');
+      const others = current.filter(
+        (c) => !['applied_active', 'applied_not_cleared_oa', 'applied_not_shortlisted', 'skipped'].includes(getCompanyGroup(c))
+      );
 
-    let newActive = active;
-    let newNotClearedOA = notClearedOA;
-    let newNotShortlisted = notShortlisted;
-    let newSkipped = skipped;
+      let newActive = active;
+      let newNotClearedOA = notClearedOA;
+      let newNotShortlisted = notShortlisted;
+      let newSkipped = skipped;
 
-    if (sourceGroup === 'applied_active') {
-      newActive = newGroupItems;
-    } else if (sourceGroup === 'applied_not_cleared_oa') {
-      newNotClearedOA = newGroupItems;
-    } else if (sourceGroup === 'applied_not_shortlisted') {
-      newNotShortlisted = newGroupItems;
-    } else if (sourceGroup === 'skipped') {
-      newSkipped = newGroupItems;
-    }
+      if (sourceGroup === 'applied_active') {
+        newActive = newGroupItems;
+      } else if (sourceGroup === 'applied_not_cleared_oa') {
+        newNotClearedOA = newGroupItems;
+      } else if (sourceGroup === 'applied_not_shortlisted') {
+        newNotShortlisted = newGroupItems;
+      } else if (sourceGroup === 'skipped') {
+        newSkipped = newGroupItems;
+      }
 
-    const newMaster = [...newActive, ...newNotClearedOA, ...newNotShortlisted, ...newSkipped, ...others];
+      const newMaster = [...newActive, ...newNotClearedOA, ...newNotShortlisted, ...newSkipped, ...others];
 
-    setCompanies(newMaster);
-    await saveCompanies(newMaster);
+      return newMaster;
+    });
+    setCompanies(fresh);
   };
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
@@ -588,7 +596,7 @@ export const App: React.FC = () => {
       const source = companies.find((c) => c.id === draggedCompanyId);
       const target = companies.find((c) => c.id === targetId);
       if (source && target && getCompanyGroup(source) === getCompanyGroup(target)) {
-        reorderCompanies(draggedCompanyId, targetId);
+        void reorderCompanies(draggedCompanyId, targetId).catch(reportStorageFailure);
       }
     }
     setDraggedCompanyId(null);
@@ -604,39 +612,11 @@ export const App: React.FC = () => {
   const [justImported, setJustImported] = useState(false);
 
   const handleImportComplete = async (imported: Company[], importedProfile?: StudentProfile) => {
-    if (importedProfile && importedProfile.name) {
-      await saveProfile(importedProfile);
+    const { companies: merged, newItemsCount } = await mergeImportedCompanies(imported, importedProfile);
+    if (importedProfile?.name) {
       setProfile(importedProfile);
       setIsProfileModalOpen(false);
     }
-
-    const current = await getCompanies();
-    const merged = [...current];
-    let newItemsCount = 0;
-
-    imported.forEach((incoming) => {
-      const idx = merged.findIndex(
-        (c) => (incoming.id && c.id === incoming.id) || c.name.trim().toLowerCase() === incoming.name.trim().toLowerCase()
-      );
-      if (idx >= 0) {
-        // Update existing record with incoming non-empty values while keeping ID and creation timestamp
-        merged[idx] = {
-          ...merged[idx],
-          ...incoming,
-          id: merged[idx].id,
-          createdAt: merged[idx].createdAt,
-          updatedAt: new Date().toISOString(),
-          notes: incoming.notes || merged[idx].notes,
-          formLink: incoming.formLink || merged[idx].formLink,
-          oaDate: incoming.oaDate || merged[idx].oaDate,
-        };
-      } else {
-        merged.unshift(incoming);
-        newItemsCount++;
-      }
-    });
-
-    await saveCompanies(merged);
     setCompanies(merged);
     setJustImported(true);
     setCurrentTab('dashboard');
@@ -977,11 +957,11 @@ export const App: React.FC = () => {
                             key={company.id}
                             company={company}
                             onEdit={openEditCompanyModal}
-                            onDelete={handleDeleteCompany}
-                            onQuickStatusChange={handleQuickStatusChange}
-                            onUpdateOAStatus={handleUpdateOAStatus}
-                            onUpdateOACleared={handleUpdateOACleared}
-                            onToggleOACleared={handleToggleOACleared}
+                            onDelete={safely(handleDeleteCompany)}
+                            onQuickStatusChange={safely(handleQuickStatusChange)}
+                            onUpdateOAStatus={safely(handleUpdateOAStatus)}
+                            onUpdateOACleared={safely(handleUpdateOACleared)}
+                            onToggleOACleared={safely(handleToggleOACleared)}
                             draggable={!searchQuery.trim()}
                             onDragStart={handleDragStart}
                             onDragOver={handleDragOver}
@@ -1016,11 +996,11 @@ export const App: React.FC = () => {
                             key={company.id}
                             company={company}
                             onEdit={openEditCompanyModal}
-                            onDelete={handleDeleteCompany}
-                            onQuickStatusChange={handleQuickStatusChange}
-                            onUpdateOAStatus={handleUpdateOAStatus}
-                            onUpdateOACleared={handleUpdateOACleared}
-                            onToggleOACleared={handleToggleOACleared}
+                            onDelete={safely(handleDeleteCompany)}
+                            onQuickStatusChange={safely(handleQuickStatusChange)}
+                            onUpdateOAStatus={safely(handleUpdateOAStatus)}
+                            onUpdateOACleared={safely(handleUpdateOACleared)}
+                            onToggleOACleared={safely(handleToggleOACleared)}
                             draggable={!searchQuery.trim()}
                             onDragStart={handleDragStart}
                             onDragOver={handleDragOver}
@@ -1049,11 +1029,11 @@ export const App: React.FC = () => {
                             key={company.id}
                             company={company}
                             onEdit={openEditCompanyModal}
-                            onDelete={handleDeleteCompany}
-                            onQuickStatusChange={handleQuickStatusChange}
-                            onUpdateOAStatus={handleUpdateOAStatus}
-                            onUpdateOACleared={handleUpdateOACleared}
-                            onToggleOACleared={handleToggleOACleared}
+                            onDelete={safely(handleDeleteCompany)}
+                            onQuickStatusChange={safely(handleQuickStatusChange)}
+                            onUpdateOAStatus={safely(handleUpdateOAStatus)}
+                            onUpdateOACleared={safely(handleUpdateOACleared)}
+                            onToggleOACleared={safely(handleToggleOACleared)}
                             draggable={!searchQuery.trim()}
                             onDragStart={handleDragStart}
                             onDragOver={handleDragOver}
@@ -1086,11 +1066,11 @@ export const App: React.FC = () => {
                           key={company.id}
                           company={company}
                           onEdit={openEditCompanyModal}
-                          onDelete={handleDeleteCompany}
-                          onQuickStatusChange={handleQuickStatusChange}
-                          onUpdateOAStatus={handleUpdateOAStatus}
-                          onUpdateOACleared={handleUpdateOACleared}
-                          onToggleOACleared={handleToggleOACleared}
+                          onDelete={safely(handleDeleteCompany)}
+                          onQuickStatusChange={safely(handleQuickStatusChange)}
+                          onUpdateOAStatus={safely(handleUpdateOAStatus)}
+                          onUpdateOACleared={safely(handleUpdateOACleared)}
+                          onToggleOACleared={safely(handleToggleOACleared)}
                           draggable={!searchQuery.trim()}
                           onDragStart={handleDragStart}
                           onDragOver={handleDragOver}
@@ -1216,7 +1196,8 @@ export const App: React.FC = () => {
         defaultStatus={defaultStatusForModal}
       />
 
-      <ImportExportModal
+      <Suspense fallback={null}>
+      {isImportExportModalOpen && <ImportExportModal
         key={importExportInitialTab}
         isOpen={isImportExportModalOpen}
         onClose={closeImportExportModal}
@@ -1224,7 +1205,8 @@ export const App: React.FC = () => {
         profile={profile}
         initialTab={importExportInitialTab}
         onImportComplete={handleImportComplete}
-      />
+      />}
+      </Suspense>
 
       <AboutModal
         isOpen={isAboutModalOpen}

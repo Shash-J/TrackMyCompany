@@ -22,6 +22,68 @@ const DB_VERSION = 1;
 
 let dbPromise: Promise<IDBPDatabase<TrackMyCompanyDB>> | null = null;
 
+export interface StorageSnapshot {
+  companies: Company[];
+  profile: StudentProfile | null;
+  revision: number;
+}
+
+export const STORAGE_REVISION_KEY = 'storage_revision_v2';
+
+const orderedCompanies = (items: (Company & { order?: number })[]): Company[] => {
+  items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  return items.map(({ order: _order, ...company }) => company);
+};
+
+/** Read, recover and mutate both datasets under one IndexedDB transaction. */
+export async function transactStorage(
+  checkpoint: StorageSnapshot | null,
+  mutate?: (current: StorageSnapshot) => StorageSnapshot,
+  onRead?: (current: StorageSnapshot) => void,
+): Promise<StorageSnapshot> {
+  const db = await getDB();
+  const tx = db.transaction(['companies', 'profile', 'meta'], 'readwrite');
+  try {
+    const [items, record, revision] = await Promise.all([
+      tx.objectStore('companies').getAll(),
+      tx.objectStore('profile').get('student_profile'),
+      tx.objectStore('meta').get(STORAGE_REVISION_KEY),
+    ]);
+    const { id: _id, ...profile } = record ?? {};
+    const stored: StorageSnapshot = {
+      companies: orderedCompanies(items),
+      profile: record ? profile as StudentProfile : null,
+      revision: typeof revision?.value === 'number' ? revision.value : 0,
+    };
+    // A fallback-only write has a higher revision than the old database. Empty
+    // datasets are authoritative too, preventing deleted records reappearing.
+    const current = checkpoint && (!revision || checkpoint.revision > stored.revision) ? checkpoint : stored;
+    onRead?.(current);
+    const next = mutate ? mutate(current) : current;
+    if (next !== stored) {
+      if (next.companies !== stored.companies) {
+        await tx.objectStore('companies').clear();
+        for (let order = 0; order < next.companies.length; order++) {
+          await tx.objectStore('companies').put({ ...next.companies[order], order });
+        }
+      }
+      if (next.profile !== stored.profile) {
+        if (next.profile) await tx.objectStore('profile').put({ ...next.profile, id: 'student_profile' });
+        else await tx.objectStore('profile').delete('student_profile');
+      }
+    }
+    if (next !== stored || !revision) {
+      await tx.objectStore('meta').put({ key: STORAGE_REVISION_KEY, value: next.revision });
+    }
+    await tx.done;
+    return next;
+  } catch (error) {
+    try { tx.abort(); } catch { /* Already aborted/completed. */ }
+    await tx.done.catch(() => {});
+    throw error;
+  }
+}
+
 export function getDB(): Promise<IDBPDatabase<TrackMyCompanyDB>> {
   if (!dbPromise) {
     dbPromise = openDB<TrackMyCompanyDB>(DB_NAME, DB_VERSION, {
@@ -40,6 +102,19 @@ export function getDB(): Promise<IDBPDatabase<TrackMyCompanyDB>> {
           db.createObjectStore('meta', { keyPath: 'key' });
         }
       },
+      blocking() {
+        // Release this tab's connection so a future schema upgrade can proceed.
+        const current = dbPromise;
+        dbPromise = null;
+        void current?.then(db => db.close());
+      },
+      terminated() {
+        dbPromise = null;
+      },
+    }).catch(error => {
+      // Do not permanently memoize a transient open failure.
+      dbPromise = null;
+      throw error;
     });
   }
   return dbPromise;
@@ -85,62 +160,43 @@ export async function isStoragePersisted(): Promise<boolean> {
 const STORAGE_KEY_COMPANIES = 'track_my_company_companies_v1';
 const STORAGE_KEY_PROFILE = 'track_my_company_profile_v1';
 
-/**
- * One-time migration from localStorage to IndexedDB.
- * Guarantees zero data loss for users who previously had data in localStorage.
- */
+/** Migrate legacy keys only into empty stores; commit the flag with the data. */
 export async function migrateFromLocalStorage(db: IDBPDatabase<TrackMyCompanyDB>): Promise<void> {
+  if ((await db.get('meta', 'migrated_from_localstorage'))?.value === true) return;
+  let rawCompanies: string | null;
+  let rawProfile: string | null;
   try {
-    const migrationFlag = await db.get('meta', 'migrated_from_localstorage');
-    if (migrationFlag && migrationFlag.value === true) {
-      return; // Already migrated
-    }
-
-    // Check if there are companies in localStorage
-    const rawCompanies = localStorage.getItem(STORAGE_KEY_COMPANIES);
-    let migratedCount = 0;
-    if (rawCompanies) {
-      try {
-        const parsed = JSON.parse(rawCompanies);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const tx = db.transaction('companies', 'readwrite');
-          for (let i = 0; i < parsed.length; i++) {
-            const company = parsed[i];
-            if (company && company.id) {
-              await tx.store.put({ ...company, order: i });
-              migratedCount++;
-            }
-          }
-          await tx.done;
-          console.log(`[IndexedDB] Successfully migrated ${migratedCount} companies from localStorage.`);
+    rawCompanies = await db.count('companies') === 0 ? localStorage.getItem(STORAGE_KEY_COMPANIES) : null;
+    rawProfile = !await db.get('profile', 'student_profile') ? localStorage.getItem(STORAGE_KEY_PROFILE) : null;
+  } catch (error) {
+    // Browsers can deny localStorage independently of IndexedDB. Keep the
+    // working DB usable and retry legacy migration on a later initialization.
+    console.warn('[IndexedDB] Legacy storage is inaccessible.', error);
+    return;
+  }
+  const companies: Company[] = rawCompanies ? JSON.parse(rawCompanies) : [];
+  const profile: StudentProfile | null = rawProfile ? JSON.parse(rawProfile) : null;
+  const tx = db.transaction(['companies', 'profile', 'meta'], 'readwrite');
+  try {
+    // Another tab may have completed migration before this transaction began.
+    if ((await tx.objectStore('meta').get('migrated_from_localstorage'))?.value !== true) {
+      if (Array.isArray(companies) && await tx.objectStore('companies').count() === 0) {
+        for (let order = 0; order < companies.length; order++) {
+          if (companies[order]?.id) await tx.objectStore('companies').put({ ...companies[order], order });
         }
-      } catch (err) {
-        console.error('[IndexedDB] Failed parsing localStorage companies during migration:', err);
       }
-    }
-
-    // Check profile
-    const rawProfile = localStorage.getItem(STORAGE_KEY_PROFILE);
-    if (rawProfile) {
-      try {
-        const parsedProfile = JSON.parse(rawProfile);
-        if (parsedProfile && parsedProfile.name) {
-          await db.put('profile', { id: 'student_profile', ...parsedProfile });
-          console.log('[IndexedDB] Successfully migrated profile from localStorage.');
-        }
-      } catch (err) {
-        console.error('[IndexedDB] Failed parsing localStorage profile during migration:', err);
+      if (profile?.name && !await tx.objectStore('profile').get('student_profile')) {
+        await tx.objectStore('profile').put({ ...profile, id: 'student_profile' });
       }
+      await tx.objectStore('meta').put({
+        key: 'migrated_from_localstorage', value: true, updatedAt: new Date().toISOString(),
+      });
     }
-
-    // Mark as migrated
-    await db.put('meta', {
-      key: 'migrated_from_localstorage',
-      value: true,
-      updatedAt: new Date().toISOString(),
-    });
-  } catch (err) {
-    console.error('[IndexedDB] Migration error:', err);
+    await tx.done;
+  } catch (error) {
+    try { tx.abort(); } catch { /* Already aborted. */ }
+    await tx.done.catch(() => {});
+    throw error;
   }
 }
 
@@ -176,7 +232,7 @@ export async function getCompaniesFromDB(): Promise<Company[]> {
     return items.map(({ order: _order, ...company }) => company as Company);
   } catch (err) {
     console.error('[IndexedDB] Failed to get companies:', err);
-    return [];
+    throw err;
   }
 }
 
@@ -188,11 +244,19 @@ export async function saveCompaniesToDB(companies: Company[]): Promise<void> {
   try {
     const db = await getDB();
     const tx = db.transaction('companies', 'readwrite');
-    await tx.store.clear();
-    for (let i = 0; i < companies.length; i++) {
-      await tx.store.put({ ...companies[i], order: i });
+    try {
+      // A synchronous DataCloneError must abort the clear as well; otherwise a
+      // malformed record can commit partial data.
+      await tx.store.clear();
+      for (let order = 0; order < companies.length; order++) {
+        await tx.store.put({ ...companies[order], order });
+      }
+      await tx.done;
+    } catch (error) {
+      try { tx.abort(); } catch { /* Transaction may already be aborted. */ }
+      await tx.done.catch(() => {});
+      throw error;
     }
-    await tx.done;
   } catch (err) {
     console.error('[IndexedDB] Failed to save companies:', err);
     throw err;
@@ -211,7 +275,7 @@ export async function getProfileFromDB(): Promise<StudentProfile | null> {
     return profile as StudentProfile;
   } catch (err) {
     console.error('[IndexedDB] Failed to get profile:', err);
-    return null;
+    throw err;
   }
 }
 
