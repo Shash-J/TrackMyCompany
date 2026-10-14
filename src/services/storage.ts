@@ -1,20 +1,14 @@
 import type { Company, StudentProfile, StatisticsData, RejectionReasonTag, OARejectionReasonTag } from '../types';
 import {
-  initDB,
-  getCompaniesFromDB,
-  saveCompaniesToDB,
-  getProfileFromDB,
-  saveProfileToDB,
   getLastBackupDate,
   setLastBackupDate,
   requestPersistentStorage,
   isStoragePersisted,
 } from './db';
+import { readStorage, mutateStorage, readMemoryStorage } from './persistence';
+import { parseBackup } from './backupValidation';
 
 export { getLastBackupDate, setLastBackupDate, requestPersistentStorage, isStoragePersisted };
-
-const STORAGE_KEY_COMPANIES = 'track_my_company_companies_v1';
-const STORAGE_KEY_PROFILE = 'track_my_company_profile_v1';
 
 export const REJECTION_PRESET_TAGS: RejectionReasonTag[] = [
   'Branch',
@@ -52,147 +46,86 @@ export const normalizeOARejectionTag = (tag: string): OARejectionReasonTag => {
   return 'Others';
 };
 
-// In-memory cache for ultra-fast UI renders
-let memoryCompanies: Company[] = [];
-let memoryProfile: StudentProfile | null = null;
-let isInitialized = false;
-let initialization: Promise<{ companies: Company[]; profile: StudentProfile | null }> | null = null;
+let initialization: ReturnType<typeof readStorage> | null = null;
 
-/**
- * Initialize storage engine (IndexedDB + one-time migration from localStorage).
- */
-export const initStorage = (): Promise<{ companies: Company[]; profile: StudentProfile | null }> => {
-  if (isInitialized) return Promise.resolve({ companies: memoryCompanies, profile: memoryProfile });
-  initialization ??= loadStorage();
+export const initStorage = () => {
+  initialization ??= readStorage().catch(error => { initialization = null; throw error; });
   return initialization;
 };
 
-const loadStorage = async (): Promise<{ companies: Company[]; profile: StudentProfile | null }> => {
-  try {
-    await initDB();
-    [memoryCompanies, memoryProfile] = await Promise.all([getCompaniesFromDB(), getProfileFromDB()]);
-  } catch (err) {
-    console.warn('[Storage] IndexedDB initialization failed, falling back to localStorage:', err);
-    try {
-      const rawC = localStorage.getItem(STORAGE_KEY_COMPANIES);
-      memoryCompanies = rawC ? JSON.parse(rawC) : [];
-      const rawP = localStorage.getItem(STORAGE_KEY_PROFILE);
-      memoryProfile = rawP ? JSON.parse(rawP) : null;
-    } catch (_) {
-      memoryCompanies = [];
-      memoryProfile = null;
-    }
-  }
-  isInitialized = true;
-  return { companies: memoryCompanies, profile: memoryProfile };
-};
-
-export const getProfile = async (): Promise<StudentProfile | null> => {
-  if (!isInitialized) {
-    await initStorage();
-  }
-  try {
-    const profile = await getProfileFromDB();
-    if (profile) {
-      memoryProfile = profile;
-      return profile;
-    }
-  } catch (err) {
-    console.warn('[Storage] Failed to read profile from DB:', err);
-  }
-  if (!memoryProfile) {
-    try {
-      const rawP = localStorage.getItem(STORAGE_KEY_PROFILE);
-      if (rawP) memoryProfile = JSON.parse(rawP);
-    } catch (_) {}
-  }
-  return memoryProfile;
-};
-
-export const getProfileSync = (): StudentProfile | null => {
-  return memoryProfile;
-};
+export const getProfile = async (): Promise<StudentProfile | null> => (await readStorage()).profile;
+export const getProfileSync = (): StudentProfile | null => readMemoryStorage().profile;
+export const getCompanies = async (): Promise<Company[]> => (await readStorage()).companies;
+export const getCompaniesSync = (): Company[] => readMemoryStorage().companies;
 
 export const saveProfile = async (profile: StudentProfile): Promise<void> => {
-  memoryProfile = { ...profile };
-  try {
-    await saveProfileToDB(profile);
-  } catch (err) {
-    console.warn('[Storage] Failed to save profile to DB, falling back to localStorage:', err);
-  }
-  // Keep localStorage updated as fallback
-  try {
-    localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile));
-  } catch (_) {}
-  window.dispatchEvent(new Event('storage-profile-change'));
+  await mutateStorage(current => ({ ...current, profile }));
 };
-
-export const getCompanies = async (): Promise<Company[]> => {
-  if (!isInitialized) {
-    await initStorage();
-  }
-  try {
-    const companies = await getCompaniesFromDB();
-    if (companies && companies.length > 0) {
-      memoryCompanies = companies;
-      return companies;
-    }
-  } catch (err) {
-    console.warn('[Storage] Failed to read companies from DB:', err);
-  }
-  if (memoryCompanies.length === 0) {
-    try {
-      const rawC = localStorage.getItem(STORAGE_KEY_COMPANIES);
-      if (rawC) memoryCompanies = JSON.parse(rawC);
-    } catch (_) {}
-  }
-  return memoryCompanies;
-};
-
-export const getCompaniesSync = (): Company[] => {
-  return memoryCompanies;
-};
-
 export const saveCompanies = async (companies: Company[]): Promise<void> => {
-  memoryCompanies = [...companies];
-  try {
-    await saveCompaniesToDB(companies);
-  } catch (err) {
-    console.warn('[Storage] Failed to save companies to DB, falling back to localStorage:', err);
-  }
-  // Keep localStorage updated as fallback
-  try {
-    localStorage.setItem(STORAGE_KEY_COMPANIES, JSON.stringify(companies));
-  } catch (_) {}
-  window.dispatchEvent(new Event('storage-companies-change'));
+  await mutateStorage(current => ({ ...current, companies }));
+};
+
+// All transformations read the latest records inside the storage transaction.
+// Callbacks must be synchronous and must not mutate the supplied array/objects.
+export const mutateCompanies = async (change: (companies: Company[]) => Company[]): Promise<Company[]> => {
+  return (await mutateStorage(current => ({ ...current, companies: change(current.companies) }))).companies;
 };
 
 export const addCompany = async (data: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>): Promise<Company> => {
-  const existing = await getCompanies();
   const now = new Date().toISOString();
-  const newCompany: Company = {
+  const company: Company = {
     ...data,
-    id: `cmp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: `cmp_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
     createdAt: now,
     updatedAt: now,
   };
-  const updated = [newCompany, ...existing];
-  await saveCompanies(updated);
-  return newCompany;
+  await mutateCompanies(companies => [company, ...companies]);
+  return company;
+};
+
+export const patchCompany = async (
+  id: string, change: Partial<Company> | ((company: Company) => Partial<Company>),
+): Promise<void> => {
+  const now = new Date().toISOString();
+  await mutateCompanies(companies => companies.map(company => company.id === id
+    ? { ...company, ...(typeof change === 'function' ? change(company) : change), id, updatedAt: now }
+    : company));
 };
 
 export const updateCompany = async (company: Company): Promise<void> => {
-  const existing = await getCompanies();
-  const updated = existing.map((c) =>
-    c.id === company.id ? { ...company, updatedAt: new Date().toISOString() } : c
-  );
-  await saveCompanies(updated);
+  await patchCompany(company.id, company);
 };
 
 export const deleteCompany = async (id: string): Promise<void> => {
-  const existing = await getCompanies();
-  const updated = existing.filter((c) => c.id !== id);
-  await saveCompanies(updated);
+  await mutateCompanies(companies => companies.filter(company => company.id !== id));
+};
+
+export const mergeImportedCompanies = async (imported: Company[], profile?: StudentProfile): Promise<{
+  companies: Company[]; newItemsCount: number;
+}> => {
+  let newItemsCount = 0;
+  const result = await mutateStorage(current => {
+    const merged = [...current.companies];
+    newItemsCount = 0;
+    imported.forEach(incoming => {
+      const idx = merged.findIndex(company => (incoming.id && company.id === incoming.id)
+        || company.name.trim().toLowerCase() === incoming.name.trim().toLowerCase());
+      if (idx >= 0) {
+        merged[idx] = {
+          ...merged[idx], ...incoming,
+          id: merged[idx].id, createdAt: merged[idx].createdAt, updatedAt: new Date().toISOString(),
+          notes: incoming.notes || merged[idx].notes,
+          formLink: incoming.formLink || merged[idx].formLink,
+          oaDate: incoming.oaDate || merged[idx].oaDate,
+        };
+      } else {
+        merged.unshift(incoming);
+        newItemsCount++;
+      }
+    });
+    return { ...current, companies: merged, profile: profile?.name ? profile : current.profile };
+  });
+  return { companies: result.companies, newItemsCount };
 };
 
 export const calculateStatistics = (companies: Company[]): StatisticsData => {
@@ -337,7 +270,7 @@ export const calculateStatistics = (companies: Company[]): StatisticsData => {
 };
 
 export const exportToJSON = async (): Promise<string> => {
-  const [profile, companies] = await Promise.all([getProfile(), getCompanies()]);
+  const { profile, companies } = await readStorage();
   const now = new Date().toISOString();
   const data = {
     profile,
@@ -351,17 +284,18 @@ export const exportToJSON = async (): Promise<string> => {
 };
 
 export const importFromJSON = async (jsonString: string): Promise<boolean> => {
-  try {
-    const parsed = JSON.parse(jsonString);
-    if (parsed.profile) {
-      await saveProfile(parsed.profile);
-    }
-    if (Array.isArray(parsed.companies)) {
-      await saveCompanies(parsed.companies);
-    }
-    return true;
-  } catch (err) {
-    console.error('Invalid JSON backup file', err);
+  let backup: ReturnType<typeof parseBackup>;
+  try { backup = parseBackup(jsonString); }
+  catch (error) {
+    console.error('Invalid JSON backup file', error);
     return false;
   }
+  // Validation finishes before the transaction. Persistence errors propagate to
+  // the existing import error display instead of being reported as success.
+  await mutateStorage(current => ({
+    ...current,
+    companies: backup.companies ?? current.companies,
+    profile: backup.profile ?? current.profile,
+  }));
+  return true;
 };
