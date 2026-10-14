@@ -1,132 +1,69 @@
-// TrackMyCompany PWA Service Worker
-const CACHE_NAME = 'trackmycompany-v1.4.2';
-
+// Replaced in dist by the build plugin. Each deployment has an isolated shell.
+const CACHE_PREFIX = `trackmycompany-shell-${encodeURIComponent(self.registration.scope)}-`;
+const CACHE_NAME = `${CACHE_PREFIX}__BUILD_REVISION__`;
 const PRECACHE_ASSETS = [
-  './',
-  './index.html',
-  './favicon.svg',
-  './favicon.ico',
-  './manifest.json',
-  './version.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/maskable-icon-512.png'
+  /* __PRECACHE_ASSETS__ */
 ];
 
-// Message listener: client can request skipWaiting directly
 self.addEventListener('message', (event) => {
   if (event.data && (event.data.type === 'SKIP_WAITING' || event.data === 'skipWaiting')) {
-    console.log('[ServiceWorker] Skip waiting activated via client message');
-    self.skipWaiting();
+    event.waitUntil(self.skipWaiting());
   }
 });
 
-// Install: Cache initial essential shell
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[ServiceWorker] Pre-caching offline shell');
-      return cache.addAll(PRECACHE_ASSETS).catch((err) => {
-        console.warn('[ServiceWorker] Pre-cache non-fatal error:', err);
-      });
-    }).then(() => self.skipWaiting())
-  );
+  // Failed precaching rejects installation, preserving the previous worker.
+  // Include lazy chunks so features work offline before their first use.
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(PRECACHE_ASSETS.map(asset => new Request(
+      new URL(asset, self.registration.scope), { cache: 'reload' }
+    )));
+    await self.skipWaiting();
+  })());
 });
 
-// Activate: Clean up old caches and take control
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log('[ServiceWorker] Removing old cache:', key);
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+      .map(key => caches.delete(key)));
+    // Other apps and the legacy shared-origin cache are not ours to delete.
+    await self.clients.claim();
+  })());
 });
 
-// Fetch: Strategy depending on request type
 self.addEventListener('fetch', (event) => {
   const request = event.request;
-
-  // Only handle GET requests
   if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
+  const scope = new URL(self.registration.scope);
+  if (url.origin !== scope.origin || !url.pathname.startsWith(scope.pathname)) return;
+  if (url.pathname === new URL('version.json', scope).pathname ||
+      url.pathname === new URL('sw.js', scope).pathname) return;
 
-  // Never intercept version.json or sw.js so update checks always hit the network directly
-  if (url.pathname.endsWith('version.json') || url.pathname.endsWith('sw.js')) {
-    return;
-  }
-
-  // Enforce HTTPS inside Service Worker for all non-localhost navigations
-  if (url.protocol === 'http:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
-    const secureUrl = 'https://' + url.host + url.pathname + url.search + url.hash;
-    event.respondWith(Response.redirect(secureUrl, 301));
-    return;
-  }
-
-  // 1. Navigation requests (HTML document): Network-first with Cache fallback
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          }
-          return networkResponse;
-        })
-        .catch(async () => {
-          const directMatch = await caches.match(request);
-          if (directMatch) return directMatch;
-          const indexMatch = await caches.match('./index.html');
-          if (indexMatch) return indexMatch;
-          const rootMatch = await caches.match('./');
-          if (rootMatch) return rootMatch;
-          return new Response('TrackMyCompany is currently offline.', {
-            headers: { 'Content-Type': 'text/html' }
-          });
-        })
-    );
+    // Open the local shell immediately. Registration checks updates separately.
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const shell = await cache.match(new URL('index.html', scope).href);
+      if (shell) return shell;
+      try { return await fetch(request); }
+      catch {
+        return new Response('TrackMyCompany is currently offline.', {
+          status: 503, headers: { 'Content-Type': 'text/plain' },
+        });
+      }
+    })());
     return;
   }
 
-  // 2. Static assets (JS, CSS, fonts, images, SVGs): Stale-While-Revalidate
-  const isStaticAsset = 
-    url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.css') ||
-    url.pathname.endsWith('.svg') ||
-    url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.woff2') ||
-    url.hostname.includes('fonts.googleapis.com') ||
-    url.hostname.includes('fonts.gstatic.com');
-
-  if (isStaticAsset) {
-    event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        const fetchPromise = fetch(request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              const copy = networkResponse.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-            }
-            return networkResponse;
-          })
-          .catch(() => cachedResponse);
-
-        return cachedResponse || fetchPromise;
-      })
-    );
-    return;
-  }
-
-  // 3. Fallback: Network with cache fallback
-  event.respondWith(
-    fetch(request).catch(() => caches.match(request))
-  );
+  // Release assets are immutable. Cache hits need no network revalidation.
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    try { return await fetch(request); }
+    catch { return Response.error(); }
+  })());
 });

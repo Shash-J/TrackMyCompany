@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import confetti from 'canvas-confetti';
 import { 
   Search, 
@@ -116,7 +116,8 @@ import { CompanyCard } from './components/CompanyCard';
 import { CompanyModal } from './components/CompanyModal';
 import { ProfileModal } from './components/ProfileModal';
 import { StatsView } from './components/StatsView';
-import { ImportExportModal } from './components/ImportExportModal';
+const ImportExportModal = lazy(() => import('./components/ImportExportModal')
+  .then(module => ({ default: module.ImportExportModal })));
 import { AboutModal } from './components/AboutModal';
 import { InstallPromptModal } from './components/InstallPromptModal';
 import { TodayDriveReminderModal } from './components/TodayDriveReminderModal';
@@ -159,9 +160,7 @@ export const App: React.FC = () => {
 
     const loadInitialData = async () => {
       try {
-        await initStorage();
-        const loadedCompanies = await getCompanies();
-        const loadedProfile = await getProfile();
+        const { companies: loadedCompanies, profile: loadedProfile } = await initStorage();
 
         if (!isMounted) return;
         setCompanies(loadedCompanies);
@@ -444,7 +443,8 @@ export const App: React.FC = () => {
     await updateCompany({
       ...target,
       oaStatus,
-      oaCleared: oaStatus === 'not_shortlisted' ? undefined : target.oaCleared,
+      oaCleared: oaStatus === 'not_shortlisted' || target.oaStatus === 'not_shortlisted'
+        ? undefined : target.oaCleared,
       oaRejectionReasonTags: oaStatus === 'not_shortlisted' ? oaRejectionReasonTags : undefined,
       oaCustomReasonNote: oaStatus === 'not_shortlisted' ? oaCustomReasonNote : undefined,
     });
@@ -1216,7 +1216,8 @@ export const App: React.FC = () => {
         defaultStatus={defaultStatusForModal}
       />
 
-      <ImportExportModal
+      <Suspense fallback={null}>
+      {isImportExportModalOpen && <ImportExportModal
         key={importExportInitialTab}
         isOpen={isImportExportModalOpen}
         onClose={closeImportExportModal}
@@ -1224,7 +1225,8 @@ export const App: React.FC = () => {
         profile={profile}
         initialTab={importExportInitialTab}
         onImportComplete={handleImportComplete}
-      />
+      />}
+      </Suspense>
 
       <AboutModal
         isOpen={isAboutModalOpen}

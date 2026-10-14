@@ -134,9 +134,6 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({
   const handleUndoNotShortlisted = (e: React.MouseEvent) => {
     e.stopPropagation();
     onUpdateOAStatus(company.id, 'shortlisted', undefined, undefined);
-    if (onUpdateOACleared) {
-      onUpdateOACleared(company.id, undefined);
-    }
     setIsMarkingNotShortlisted(false);
   };
 

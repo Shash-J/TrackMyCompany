@@ -4,7 +4,18 @@ import './index.css'
 import App from './App.tsx'
 
 // Register Service Worker for offline PWA support with reliable auto-update
-if ('serviceWorker' in navigator) {
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  // First installation claiming this page is not an update and must not erase
+  // a student's in-progress profile/company form with an unnecessary reload.
+  let hadController = Boolean(navigator.serviceWorker.controller);
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController && !refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+    hadController = true;
+  });
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('./sw.js')
@@ -30,14 +41,6 @@ if ('serviceWorker' in navigator) {
         console.warn('[PWA] Service Worker registration failed:', error);
       });
 
-    // Auto-reload when new service worker takes control so user gets fresh updates seamlessly
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        window.location.reload();
-      }
-    });
   });
 }
 

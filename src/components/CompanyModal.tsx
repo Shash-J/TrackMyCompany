@@ -114,6 +114,7 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({
       setStatus(defaultStatus === 'not_applied' ? 'not_applied' : 'applied');
       setOaDate('');
       setOaStatusState('shortlisted');
+      setOaClearedState(undefined);
       setOaRejectionReasonTags(['CGPA']);
       setOaCustomReasonNote('');
       setRejectionReasonTags(['CTC']);

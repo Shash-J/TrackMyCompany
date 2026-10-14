@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* Test fixtures and review prose are not application class names. */
+@source not "../tests";
+@source not "../scripts";
+@source not "../docs";
 
 @layer base {
   :root {

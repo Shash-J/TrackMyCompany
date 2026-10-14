@@ -40,6 +40,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
     if (isOpen && updateStatus === 'idle') {
       fetch(`./version.json?_t=${Date.now()}`, {
         cache: 'no-store',
+        signal: AbortSignal.timeout(10000),
         headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
       })
         .then((res) => (res.ok ? res.json() : null))
@@ -69,6 +70,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
       try {
         const res = await fetch(`./version.json?_t=${Date.now()}`, {
           cache: 'no-store',
+          signal: AbortSignal.timeout(10000),
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
@@ -116,8 +118,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({
         return;
       }
 
-      // 4. Truly up to date
-      setUpdateStatus('latest');
+      // A failed network check is not evidence that this release is latest.
+      setUpdateStatus(remoteVersion ? 'latest' : 'error');
       setTimeout(() => setUpdateStatus('idle'), 3500);
     } catch (err) {
       console.error('[PWA] Update check failure:', err);
@@ -129,35 +131,34 @@ export const AboutModal: React.FC<AboutModalProps> = ({
   const handleApplyUpdate = async () => {
     setUpdateStatus('updating');
     try {
-      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) {
-          if (reg.waiting) {
-            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-          } else if (reg.installing) {
-            reg.installing.addEventListener('statechange', (e: any) => {
-              if (e.target?.state === 'installed') {
-                reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
-              }
-            });
-          }
-        }
+      // Keep the complete offline shell. The worker installs a replacement
+      // atomically and controllerchange reloads only after activation.
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) throw new Error('Service worker unavailable');
+      await registration.update();
+      const worker = registration.installing || registration.waiting;
+      if (worker) {
+        await new Promise<void>((resolve, reject) => {
+          const cleanup = () => {
+            clearTimeout(timeout);
+            worker.removeEventListener('statechange', checkState);
+          };
+          const checkState = () => {
+            if (worker.state === 'activated') { cleanup(); resolve(); }
+            else if (worker.state === 'redundant') { cleanup(); reject(new Error('Update failed')); }
+          };
+          const timeout = setTimeout(() => {
+            cleanup();
+            reject(new Error('Update timed out'));
+          }, 15000);
+          worker.addEventListener('statechange', checkState);
+          worker.postMessage({ type: 'SKIP_WAITING' });
+          checkState();
+        });
       }
-
-      // Clear caches to ensure immediate freshness
-      if (typeof window !== 'undefined' && 'caches' in window) {
-        try {
-          const keys = await caches.keys();
-          await Promise.all(keys.map((k) => caches.delete(k)));
-        } catch (_) {}
-      }
-
-      // Refresh application to load new bundle
-      setTimeout(() => {
-        window.location.reload();
-      }, 400);
-    } catch {
       window.location.reload();
+    } catch {
+      setUpdateStatus(navigator.onLine ? 'error' : 'offline');
     }
   };
 
