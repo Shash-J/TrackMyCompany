@@ -168,7 +168,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
         }
       } catch (err) {
         console.error('Failed to read backup file:', err);
-        setStatusMessage({ type: 'error', message: 'Failed to read backup file.' });
+        setStatusMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to read backup file.' });
       }
     };
     reader.readAsText(file);

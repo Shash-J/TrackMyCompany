@@ -176,3 +176,156 @@ test('failed version check never reports Latest', async ({ page }) => {
   await check.click();
   await expect(page.getByRole('button', { name: 'Check failed', exact: true })).toBeVisible();
 });
+
+async function newCompanyForm(page: Page, name: string) {
+  await page.getByRole('button', { name: 'Add Company', exact: true }).filter({ visible: true }).click();
+  await page.getByRole('button', { name: 'Enter Manually Instead' }).click();
+  await page.getByPlaceholder('e.g. Microsoft').fill(name);
+}
+
+async function failWrites(page: Page, both = false, store = 'companies') {
+  await page.evaluate(({ both, store }) => {
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (...args) {
+      if (this.name === store) throw new DOMException('Injected DB quota failure', 'QuotaExceededError');
+      return put.apply(this, args);
+    };
+    if (both) {
+      const set = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (key.startsWith('track_my_company_')) throw new DOMException('Injected local quota failure', 'QuotaExceededError');
+        set.call(this, key, value);
+      };
+    }
+  }, { both, store });
+}
+
+test('concurrent additions from two tabs remain saved and visible in both tabs', async ({ page, context }) => {
+  await seed(page);
+  await ready(page);
+  const other = await context.newPage();
+  await ready(other);
+  await newCompanyForm(page, 'Added in First Tab');
+  await newCompanyForm(other, 'Added in Second Tab');
+  await Promise.all([page, other].map(tab => tab.getByRole('button', { name: 'Add Company to Tracker' }).click()));
+  for (const tab of [page, other]) {
+    await expect(tab.getByRole('heading', { name: 'Added in First Tab', exact: true })).toBeVisible();
+    await expect(tab.getByRole('heading', { name: 'Added in Second Tab', exact: true })).toBeVisible();
+  }
+  expect((await records(page)).length).toBe(3);
+});
+
+test('tabs receive DB commits even when localStorage mirrors are unavailable', async ({ page, context }) => {
+  await seed(page);
+  await ready(page);
+  const other = await context.newPage();
+  await ready(other);
+  // Deny only the optional mirror; the DB transaction must still succeed.
+  await page.evaluate(() => {
+    Storage.prototype.setItem = () => { throw new DOMException('localStorage denied', 'SecurityError'); };
+  });
+  await newCompanyForm(page, 'DB Only Company');
+  await page.getByRole('button', { name: 'Add Company to Tracker' }).click();
+  await expect(other.getByRole('heading', { name: 'DB Only Company', exact: true })).toBeVisible();
+  expect((await records(other)).length).toBe(2);
+});
+
+test('two fallback-only tabs preserve both additions and recover them after reload', async ({ page, context }) => {
+  await seed(page);
+  await ready(page);
+  const other = await context.newPage();
+  await ready(other);
+  await failWrites(page);
+  await failWrites(other);
+  await newCompanyForm(page, 'First Fallback');
+  await newCompanyForm(other, 'Second Fallback');
+  await Promise.all([page, other].map(tab => tab.getByRole('button', { name: 'Add Company to Tracker' }).click()));
+  for (const tab of [page, other]) {
+    await expect(tab.getByRole('heading', { name: 'First Fallback', exact: true })).toBeVisible();
+    await expect(tab.getByRole('heading', { name: 'Second Fallback', exact: true })).toBeVisible();
+  }
+  expect((await records(page)).length).toBe(1);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Second Fallback', exact: true })).toBeVisible();
+  expect((await records(page)).length).toBe(3);
+});
+
+test('failed profile save keeps the existing form open and preserves the name', async ({ page }) => {
+  await seed(page);
+  await ready(page);
+  await failWrites(page, true, 'profile');
+  await page.getByTitle('Student Profile').click();
+  await expect(page.getByRole('heading', { name: 'Student Profile', exact: true })).toBeVisible();
+  const name = page.locator('form input').filter({ visible: true }).first();
+  await name.fill('Unsaved Student');
+  await name.evaluate(input => input.closest('form')!.requestSubmit());
+  await expect(page.getByText(/Could not save your changes/)).toBeVisible();
+  await expect(name).toHaveValue('Unsaved Student');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('track_my_company_snapshot_v2')!).profile.name)).toBe('Test Student');
+});
+
+test('fallback-only company save survives reload and repairs the old database', async ({ page }) => {
+  await seed(page);
+  await ready(page);
+  await failWrites(page);
+  await newCompanyForm(page, 'Fallback Company');
+  await page.getByRole('button', { name: 'Add Company to Tracker' }).click();
+  await expect(page.getByRole('heading', { name: 'Fallback Company', exact: true })).toBeVisible();
+  expect((await records(page)).length).toBe(1);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Fallback Company', exact: true })).toBeVisible();
+  expect((await records(page)).length).toBe(2);
+});
+
+test('a failed company save keeps the form input and reports failure', async ({ page }) => {
+  await seed(page);
+  await ready(page);
+  await failWrites(page, true);
+  await newCompanyForm(page, 'Unsaved Company');
+  await page.getByRole('button', { name: 'Add Company to Tracker' }).click();
+  await expect(page.getByText(/Could not save your changes/)).toBeVisible();
+  await expect(page.getByPlaceholder('e.g. Microsoft')).toHaveValue('Unsaved Company');
+  expect((await records(page)).length).toBe(1);
+});
+
+test('repeated form submissions create only one company', async ({ page }) => {
+  await seed(page);
+  await ready(page);
+  await newCompanyForm(page, 'Single Company');
+  await page.getByPlaceholder('e.g. Microsoft').evaluate(input => {
+    const form = input.closest('form')!;
+    form.requestSubmit();
+    form.requestSubmit();
+  });
+  await expect(page.getByRole('heading', { name: 'Single Company', exact: true })).toBeVisible();
+  expect((await records(page)).filter(c => c.name === 'Single Company').length).toBe(1);
+});
+
+test('invalid backup does not change student records or profile', async ({ page }) => {
+  await seed(page);
+  await ready(page);
+  await page.getByTitle('Import or Export Excel / CSV').click();
+  await page.getByRole('button', { name: /Backup/ }).click();
+  await page.locator('input[type=file][accept=".json"]').setInputFiles({
+    name: 'invalid.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ profile: { name: 'Wrong Student' }, companies: [null] })),
+  });
+  await expect(page.getByText('Invalid backup file format.')).toBeVisible();
+  expect((await records(page))[0].name).toBe(company.name);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('track_my_company_snapshot_v2')!).profile.name)).toBe('Test Student');
+});
+
+test('failed backup restore rolls back all records and uses the existing error display', async ({ page }) => {
+  await seed(page);
+  await ready(page);
+  await failWrites(page, true, 'profile');
+  await page.getByTitle('Import or Export Excel / CSV').click();
+  await page.getByRole('button', { name: /Backup/ }).click();
+  await page.locator('input[type=file][accept=".json"]').setInputFiles({
+    name: 'valid.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ profile: { name: 'Replacement' }, companies: [{ ...company, name: 'Replacement Company' }] })),
+  });
+  await expect(page.getByText(/Could not save your changes/)).toBeVisible();
+  expect((await records(page))[0].name).toBe(company.name);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('track_my_company_snapshot_v2')!).profile.name)).toBe('Test Student');
+});
