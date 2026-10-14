@@ -230,6 +230,20 @@ test('tabs receive DB commits even when localStorage mirrors are unavailable', a
   expect((await records(other)).length).toBe(2);
 });
 
+test('another tab saving a company preserves an open profile draft', async ({ page, context }) => {
+  await seed(page);
+  await ready(page);
+  const other = await context.newPage();
+  await ready(other);
+  await page.getByTitle('Student Profile').click();
+  const name = page.locator('form input').filter({ visible: true }).first();
+  await name.fill('Draft Student');
+  await newCompanyForm(other, 'Peer Tab Company');
+  await other.getByRole('button', { name: 'Add Company to Tracker' }).click();
+  await expect(page.getByRole('heading', { name: 'Peer Tab Company', exact: true })).toBeVisible();
+  await expect(name).toHaveValue('Draft Student');
+});
+
 test('two fallback-only tabs preserve both additions and recover them after reload', async ({ page, context }) => {
   await seed(page);
   await ready(page);

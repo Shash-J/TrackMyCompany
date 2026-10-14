@@ -25,9 +25,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [batch, setBatch] = useState('2027');
   const [error, setError] = useState('');
   const saving = useRef(false);
+  const wasOpen = useRef(false);
 
   useEffect(() => {
-    if (currentProfile) {
+    const opening = isOpen && !wasOpen.current;
+    wasOpen.current = isOpen;
+    // Background refreshes may return a new profile object while the student
+    // is typing. Initialize on opening, then retain the draft until closing.
+    if (opening && currentProfile) {
       setName(currentProfile.name || '');
       setBranch(currentProfile.branch || '');
       setBatch(currentProfile.batch || '2027');
