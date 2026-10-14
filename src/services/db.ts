@@ -40,6 +40,19 @@ export function getDB(): Promise<IDBPDatabase<TrackMyCompanyDB>> {
           db.createObjectStore('meta', { keyPath: 'key' });
         }
       },
+      blocking() {
+        // Release this tab's connection so a future schema upgrade can proceed.
+        const current = dbPromise;
+        dbPromise = null;
+        void current?.then(db => db.close());
+      },
+      terminated() {
+        dbPromise = null;
+      },
+    }).catch(error => {
+      // Do not permanently memoize a transient open failure.
+      dbPromise = null;
+      throw error;
     });
   }
   return dbPromise;
@@ -176,7 +189,7 @@ export async function getCompaniesFromDB(): Promise<Company[]> {
     return items.map(({ order: _order, ...company }) => company as Company);
   } catch (err) {
     console.error('[IndexedDB] Failed to get companies:', err);
-    return [];
+    throw err;
   }
 }
 
@@ -188,11 +201,19 @@ export async function saveCompaniesToDB(companies: Company[]): Promise<void> {
   try {
     const db = await getDB();
     const tx = db.transaction('companies', 'readwrite');
-    await tx.store.clear();
-    for (let i = 0; i < companies.length; i++) {
-      await tx.store.put({ ...companies[i], order: i });
+    try {
+      // A synchronous DataCloneError must abort the clear as well; otherwise a
+      // malformed record can commit partial data.
+      await tx.store.clear();
+      for (let order = 0; order < companies.length; order++) {
+        await tx.store.put({ ...companies[order], order });
+      }
+      await tx.done;
+    } catch (error) {
+      try { tx.abort(); } catch { /* Transaction may already be aborted. */ }
+      await tx.done.catch(() => {});
+      throw error;
     }
-    await tx.done;
   } catch (err) {
     console.error('[IndexedDB] Failed to save companies:', err);
     throw err;
@@ -211,7 +232,7 @@ export async function getProfileFromDB(): Promise<StudentProfile | null> {
     return profile as StudentProfile;
   } catch (err) {
     console.error('[IndexedDB] Failed to get profile:', err);
-    return null;
+    throw err;
   }
 }
 

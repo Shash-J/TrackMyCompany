@@ -56,15 +56,21 @@ export const normalizeOARejectionTag = (tag: string): OARejectionReasonTag => {
 let memoryCompanies: Company[] = [];
 let memoryProfile: StudentProfile | null = null;
 let isInitialized = false;
+let initialization: Promise<{ companies: Company[]; profile: StudentProfile | null }> | null = null;
 
 /**
  * Initialize storage engine (IndexedDB + one-time migration from localStorage).
  */
-export const initStorage = async (): Promise<{ companies: Company[]; profile: StudentProfile | null }> => {
+export const initStorage = (): Promise<{ companies: Company[]; profile: StudentProfile | null }> => {
+  if (isInitialized) return Promise.resolve({ companies: memoryCompanies, profile: memoryProfile });
+  initialization ??= loadStorage();
+  return initialization;
+};
+
+const loadStorage = async (): Promise<{ companies: Company[]; profile: StudentProfile | null }> => {
   try {
     await initDB();
-    memoryCompanies = await getCompaniesFromDB();
-    memoryProfile = await getProfileFromDB();
+    [memoryCompanies, memoryProfile] = await Promise.all([getCompaniesFromDB(), getProfileFromDB()]);
   } catch (err) {
     console.warn('[Storage] IndexedDB initialization failed, falling back to localStorage:', err);
     try {
